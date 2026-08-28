@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import api from '../../../../api/api';
 import styles from './AccountFormModal.module.css';
 import { toast } from 'react-toastify';
+import ImageCropModal from '../../../../shared/ImageCropModal/ImageCropModal';
+import { useDropzone } from 'react-dropzone';
 
 function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -14,6 +16,38 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
     avatar: ''
   });
 
+  // Các state phục vụ cho việc cắt ảnh
+  const [rawImageSrc, setRawImageSrc] = useState(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+
+  // Cấu hình react-dropzone: chỉ nhận file ảnh, tối đa 5MB
+  const { getRootProps, getInputProps } = useDropzone({
+    accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.webp'] },
+    maxSize: 5 * 1024 * 1024, // 5MB
+    onDrop: (acceptedFiles, rejectedFiles) => {
+      if (rejectedFiles.length > 0) {
+        toast.error('File ảnh không hợp lệ hoặc vượt quá dung lượng 5MB!');
+        return;
+      }
+      const file = acceptedFiles[0];
+      if (file) {
+        // Tạo URL tạm thời để đưa vào màn hình Crop
+        const imageUrl = URL.createObjectURL(file);
+        setRawImageSrc(imageUrl);
+        setIsCropModalOpen(true);
+      }
+    }
+  });
+
+  // Nhận lại file đã cắt xong từ ImageCropModal
+  const handleCropComplete = (croppedFile, croppedPreviewUrl) => {
+    setFormData(prev => ({
+      ...prev,
+      avatar: croppedPreviewUrl,   // Dùng để hiển thị hình ảnh preview ngay lập tức
+      avatarFile: croppedFile     // File thực tế để truyền lên API qua FormData
+    }));
+  };
+
   useEffect(() => {
     if (initialData) {
       setFormData({
@@ -23,7 +57,8 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
         phoneNumber: initialData.phoneNumber || '',
         salary: initialData.salary || '',
         role: initialData.role || 'staff',
-        avatar: initialData.avatar || ''
+        avatar: initialData.avatar || '',
+        avatarFile: null
       });
     } else {
       setFormData({
@@ -33,9 +68,12 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
         phoneNumber: '',
         salary: '',
         role: 'staff',
-        avatar: ''
+        avatar: '',
+        avatarFile: null
       });
     }
+    setIsCropModalOpen(false);
+    setRawImageSrc(null);
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
@@ -48,24 +86,36 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Xây dựng payload sạch, loại bỏ các field rỗng và chuyển salary sang number
-      const payload = {
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-      };
-      if (formData.fullName) payload.fullName = formData.fullName;
-      if (formData.phoneNumber) payload.phoneNumber = formData.phoneNumber;
-      if (formData.avatar) payload.avatar = formData.avatar;
-      if (formData.salary !== '' && formData.salary !== undefined) {
-        payload.salary = Number(formData.salary);
+      // vì có file nên dùng form data thay vì json thuần
+      const formPayload = new FormData();
+      formPayload.append('email', formData.email);
+      formPayload.append('password', formData.password);
+      formPayload.append('role', formData.role);
+      formPayload.append('fullName', formData.fullName);
+      formPayload.append('phoneNumber', formData.phoneNumber);
+      formPayload.append('salary', Number(formData.salary));
+      // Nếu người dùng có chọn file ảnh mới được crop thì đính kèm vào
+      if (formData.avatarFile) {
+        formPayload.append('avatar', formData.avatarFile);
       }
 
+      // const payload = {
+      //   email: formData.email,
+      //   password: formData.password,
+      //   role: formData.role,
+      // };
+      // if (formData.fullName) payload.fullName = formData.fullName;
+      // if (formData.phoneNumber) payload.phoneNumber = formData.phoneNumber;
+      // if (formData.avatar) payload.avatar = formData.avatar;
+      // if (formData.salary !== '' && formData.salary !== undefined) {
+      //   payload.salary = Number(formData.salary);
+      // }
+
       if (initialData) {
-        await api.patch(`/admin/accounts/update/${initialData._id}`, payload);
+        await api.patch(`/admin/accounts/update/${initialData._id}`, formPayload);
         toast.success('Cập nhật tài khoản thành công');
       } else {
-        await api.post('/admin/accounts/create', payload);
+        await api.post('/admin/accounts/create', formPayload);
         toast.success('Tạo tài khoản thành công');
       }
       onSuccess();
@@ -85,15 +135,20 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
 
         {/* Form chứa các input và tự động submit khi bấm nút lưu */}
         <form onSubmit={handleSubmit} id="accountForm" className={styles.modalBodyGrid}>
-          {/* Cột trái: Tải lên ảnh đại diện */}
+          {/* Khu vực Upload Avatar sử dụng react-dropzone */}
           <div className={styles.modalLeftCol}>
-            <div className={styles.avatarUploadBox}>
+            <div {...getRootProps()} className={styles.avatarUploadBox}>
+              <input {...getInputProps()} />
               <div className={styles.avatarPlaceholderCircle}>
-                {formData.avatar ? <img src={formData.avatar} alt="" /> : null}
+                {formData.avatar ? (
+                  <img src={formData.avatar} alt="Avatar" className={styles.previewImg} />
+                ) : (
+                  <span className={styles.placeholderText}>Chọn ảnh</span>
+                )}
               </div>
               <div className={styles.cameraIconBadge}>📷</div>
             </div>
-            <p>Tải lên ảnh đại diện<br />(Tùy chọn)</p>
+            <p className={styles.uploadText}>Kéo thả hoặc bấm vào để chọn ảnh<br />(Tối đa 5MB)</p>
           </div>
 
           {/* Cột phải: Các input thông tin */}
@@ -184,6 +239,13 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
           <button type="button" className={styles.btnCancel} onClick={onClose}>Hủy</button>
           <button type="submit" form="accountForm" className={styles.btnSubmit}>Lưu</button>
         </div>
+        {/* Modal cắt và căn chỉnh ảnh đại diện */}
+        <ImageCropModal
+          isOpen={isCropModalOpen}
+          onClose={() => setIsCropModalOpen(false)}
+          imgSrc={rawImageSrc}
+          onCropComplete={handleCropComplete}
+        />
       </div>
     </div>
   );

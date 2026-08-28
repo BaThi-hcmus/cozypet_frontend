@@ -4,6 +4,7 @@ import AdminLayout from './components/admin/AdminLayout/AdminLayout';
 import AccountManagement from './pages/admin/AccountManagement/AccountManagement';
 import { ToastContainer } from 'react-toastify'; // tạo thông báo bên frontend
 import 'react-toastify/dist/ReactToastify.css';
+import 'react-image-crop/dist/ReactCrop.css'; // thư viện cắt ảnh
 
 function App() {
   return (
