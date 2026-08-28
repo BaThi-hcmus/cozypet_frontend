@@ -1,0 +1,31 @@
+/* Import Google Fonts dùng chung cho các component Admin */
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+/* Khởi tạo Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Reset cơ bản cho toàn bộ trang Admin */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  background-color: #fdf9f3;
+  /* Màu nền chủ đạo của CozyPet Admin */
+  color: #1c1c18;
+  /* Màu chữ chủ đạo */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Đảm bảo thẻ root chiếm toàn màn hình, không bị bóp méo hay canh giữa */
+#root {
+  width: 100%;
+  min-height: 100vh;
+}

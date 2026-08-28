@@ -1,0 +1,177 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.modalContainer {
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.detailModalContainer {
+  width: 480px;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+}
+
+.modalHeader button {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #9ca3af;
+  transition: color 0.2s;
+}
+
+.modalHeader button:hover {
+  color: #111;
+}
+
+.detailModalBody {
+  padding: 24px;
+}
+
+.detailTopProfile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.detailAvatarCircle {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f3f4f6;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border: 3px solid #fff;
+}
+
+.detailAvatarCircle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detailTopProfile h2 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.roleTag {
+  background: #f3f4f6;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.detailInfoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.infoCard {
+  background: #f9fafb;
+  padding: 14px 16px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #f3f4f6;
+}
+
+.infoCard span {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.infoCard p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.textActive {
+  color: #059669 !important;
+}
+
+.textInactive {
+  color: #dc2626 !important;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #f3f4f6;
+  background: #f9fafb;
+}
+
+.btnClose {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  color: #4b5563;
+  transition: background 0.2s;
+}
+
+.btnClose:hover {
+  background: #f3f4f6;
+}
+
+.btnEdit {
+  padding: 10px 24px;
+  border-radius: 12px;
+  border: none;
+  background: #fbcfe8;
+  /* Tone hồng nhẹ giống nút Thêm tài khoản ở trang chính */
+  color: #be185d;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btnEdit:hover {
+  background: #f472b6;
+  color: #fff;
+}

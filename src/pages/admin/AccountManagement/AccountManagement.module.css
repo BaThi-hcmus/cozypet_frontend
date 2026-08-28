@@ -1,0 +1,55 @@
+.container {
+  padding: 24px;
+  background-color: #f8fafc;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.pageHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.pageHeaderRow h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+
+.pageHeaderRow p {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.btnAddAccount {
+  background-color: #fbcfe8;
+  color: #be185d;
+  border: none;
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(244, 114, 182, 0.2);
+}
+
+.btnAddAccount:hover {
+  background-color: #f472b6;
+  color: #fff;
+}
+
+.errorMsg {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+}

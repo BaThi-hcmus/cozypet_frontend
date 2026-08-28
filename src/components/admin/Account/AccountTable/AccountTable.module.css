@@ -1,0 +1,181 @@
+.accountTableContainer {
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.accountTableContainer table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.accountTableContainer th {
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 16px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.accountTableContainer td {
+  padding: 14px 12px;
+  font-size: 14px;
+  color: #1f2937;
+  border-bottom: 1px solid #f9fafb;
+  vertical-align: middle;
+}
+
+.avatarImg {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
+}
+
+.fontMedium {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Badge vai trò */
+.roleBadge {
+  padding: 5px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.admin {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.staff {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+/* Nhãn trạng thái hình viên thuốc */
+.statusActive {
+  background: #d1fae5;
+  color: #065f46;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.statusActive:hover {
+  opacity: 0.85;
+}
+
+.statusInactive {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.statusInactive:hover {
+  opacity: 0.85;
+}
+
+/* Nhóm nút thao tác trong bảng */
+.actionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.actionButtons button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.btnDetail {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btnDetail:hover {
+  background: #e5e7eb;
+}
+
+.btnEdit {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.btnEdit:hover {
+  background: #fde68a;
+}
+
+.btnDelete {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.btnDelete:hover {
+  background: #fecaca;
+}
+
+/* Phân trang */
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  padding-right: 12px;
+}
+
+.pagination button {
+  background: transparent;
+  border: 1px solid transparent;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.pagination button.active {
+  background: #fbcfe8;
+  color: #be185d;
+  border-color: #f472b6;
+}
+
+.pagination button:hover:not(.active):not(:disabled) {
+  background: #f3f4f6;
+}
+
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
