@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../../api/api';
 import styles from './AccountFormModal.module.css';
+import { toast } from 'react-toastify';
 
 function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -62,13 +63,15 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
 
       if (initialData) {
         await api.patch(`/admin/accounts/update/${initialData._id}`, payload);
+        toast.success('Cập nhật tài khoản thành công');
       } else {
         await api.post('/admin/accounts/create', payload);
+        toast.success('Tạo tài khoản thành công');
       }
       onSuccess();
       onClose();
     } catch (error) {
-      alert(error.message || 'Có lỗi xảy ra khi lưu tài khoản');
+      toast.error(error.message || 'Có lỗi xảy ra khi lưu tài khoản');
     }
   };
 

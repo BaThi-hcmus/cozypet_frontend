@@ -5,6 +5,7 @@ import AccountFormModal from '../../../components/admin/Account/AccountFormModal
 import AccountDetailModal from '../../../components/admin/Account/AccountDetailModal/AccountDetailModal';
 import styles from './AccountManagement.module.css';
 import api from '../../../api/api';
+import { toast } from 'react-toastify'; // Import toast
 
 function AccountManagement() {
   const [status, setStatus] = useState('');
@@ -43,6 +44,7 @@ function AccountManagement() {
       setSortList(response.data.sortList);
       setPaginationObj(response.data.paginationObj);
     } catch (err) {
+      toast.error(err.message || 'Lỗi khi tải danh sách tài khoản')
       setError(err.message || 'Lỗi khi tải danh sách tài khoản');
     } finally {
       setLoading(false);
@@ -77,9 +79,10 @@ function AccountManagement() {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     try {
       await api.patch(`/admin/accounts/update/${id}`, { status: newStatus });
+      toast.success('Đã đổi trạng thái tài khoản');
       fetchAccounts();
     } catch (err) {
-      alert(err.message || 'Lỗi cập nhật trạng thái tài khoản');
+      toast.error(err.message || 'Lỗi cập nhật trạng thái tài khoản');
     }
   };
 
@@ -97,9 +100,10 @@ function AccountManagement() {
     if (window.confirm('Bạn có chắc chắn muốn xóa tài khoản này không?')) {
       try {
         await api.patch(`/admin/accounts/delete/${id}`);
+        toast.success('Đã xóa tài khoản');
         fetchAccounts();
       } catch (err) {
-        alert(err.message || 'Lỗi khi xóa tài khoản');
+        toast.error(err.message || 'Lỗi khi xóa tài khoản');
       }
     }
   };
