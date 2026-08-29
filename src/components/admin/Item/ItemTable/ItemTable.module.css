@@ -1,0 +1,247 @@
+.itemTableContainer {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+}
+
+.table th {
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table th:first-child {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+  width: 48px;
+  text-align: center;
+}
+
+.table th:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  text-align: center;
+}
+
+.table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.table td:first-child {
+  text-align: center;
+}
+
+.table tbody tr {
+  transition: background 0.2s;
+}
+
+.table tbody tr:hover {
+  background: #fff0f5;
+}
+
+.itemImgThumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 2px solid #fbcfe8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s;
+}
+
+.table tbody tr:hover .itemImgThumb {
+  transform: scale(1.1);
+}
+
+.itemNameText {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.typeBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.typeFurniture {
+  background: #fbcfe8;
+  color: #be185d;
+}
+
+.typeDecoration {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.typeFood {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.typeToy {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.priceText {
+  font-weight: 700;
+  color: #e11d48;
+}
+
+.statusActive {
+  background: #dcfce7;
+  color: #15803d;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+  transition: all 0.2s;
+}
+
+.statusInactive {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+  transition: all 0.2s;
+}
+
+.statusActive:hover,
+.statusInactive:hover {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
+.actionButtons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btnDetail,
+.btnEdit,
+.btnDelete {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btnDetail {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.btnDetail:hover {
+  background: #0284c7;
+  color: #fff;
+}
+
+.btnEdit {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.btnEdit:hover {
+  background: #d97706;
+  color: #fff;
+}
+
+.btnDelete {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.btnDelete:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
+/* Phân trang */
+.paginationContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+  margin-top: 12px;
+}
+
+.paginationInfo {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.paginationList {
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pageItem {
+  min-width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pageItem:hover {
+  background: #fce7f3;
+  color: #db2777;
+}
+
+.pageItemActive {
+  background: #db2777;
+  color: #fff;
+  border-color: #db2777;
+  font-weight: 600;
+}

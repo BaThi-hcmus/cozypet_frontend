@@ -41,11 +41,19 @@ const Sidebar = () => {
         </NavLink>
 
         <NavLink
+          to="/admin/items"
+          className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}
+        >
+          <span className="material-symbols-outlined">category</span>
+          Items
+        </NavLink>
+
+        <NavLink
           to="/admin/rooms"
           className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}
         >
           <span className="material-symbols-outlined">bedroom_parent</span>
-          Rooms & Items
+          Rooms
         </NavLink>
 
         <NavLink

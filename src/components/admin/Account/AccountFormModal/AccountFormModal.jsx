@@ -4,6 +4,7 @@ import styles from './AccountFormModal.module.css';
 import { toast } from 'react-toastify';
 import ImageCropModal from '../../../../shared/ImageCropModal/ImageCropModal';
 import { useDropzone } from 'react-dropzone';
+import { useImageCrop } from '../../../../hooks/useImageCrop';
 
 function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -16,49 +17,17 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
     avatar: ''
   });
 
-  // Các state phục vụ cho việc cắt ảnh
-  // lưu đường dẫn tạm thời của bức ảnh gốc, bức ảnh này được truyền sang ImageCropModal để cắt ảnh
-  const [rawImageSrc, setRawImageSrc] = useState(null);
-  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
-
-  // Cấu hình react-dropzone: chỉ nhận file ảnh, tối đa 5MB
-  // getRootProps được gắn vào 1 thẻ html để bắt sự kiện click (onClick) hoặc kéo thả (onDragOver)
-  // getInputProps giúp kích hoạt hộp thoại chọn file
-  const { getRootProps, getInputProps } = useDropzone({
-    accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.webp'] },
-    maxSize: 5 * 1024 * 1024, // 5MB
-    // sau khi chọn xong file, thì chạy vào onDrop
-    // acceptFiles là 1 mảng chứa các file hợp lệ 
-    // rejectedFiles là 1 mảng chứa các file bị từ chối
-    onDrop: (acceptedFiles, rejectedFiles) => {
-      if (rejectedFiles.length > 0) {
-        toast.error('File ảnh không hợp lệ hoặc vượt quá dung lượng 5MB!');
-        return;
-      }
-      // lấy ra file hợp lệ đầu tiên vì avatar chỉ cho chọn 1 ảnh
-      const file = acceptedFiles[0];
-      if (file) {
-        // Tạo URL tạm thời để đưa vào màn hình Crop
-        // Hàm này tạo ra 1 đối tượng File thôi và 1 url ảo
-        const imageUrl = URL.createObjectURL(file);
-        // Lưu đường dẫn ảo trên vào rawImageSrc để hiển thị lên modal cắt ảnh
-        setRawImageSrc(imageUrl);
-        // Bật modal lên
-        setIsCropModalOpen(true);
-      }
-    }
-  });
-
-  // Nhận lại file đã cắt xong từ ImageCropModal
-  // croppedFile là 1 đối tượng kiểu File, sẽ được gửi qua server
-  // croppedPreviewUrl là 1 chuỗi url đại diện cho bức ảnh vừa được cắt
-  const handleCropComplete = (croppedFile, croppedPreviewUrl) => {
-    setFormData(prev => ({
-      ...prev,
-      avatar: croppedPreviewUrl,   // Dùng để hiển thị hình ảnh preview ngay lập tức
-      avatarFile: croppedFile     // File thực tế để truyền lên API qua FormData
-    }));
-  };
+  // Gọi Custom Hook quản lý ảnh
+  const {
+    previewUrl,
+    imageFile,
+    rawImageSrc,
+    isCropModalOpen,
+    setIsCropModalOpen,
+    dropzone,
+    handleCropComplete,
+    resetImage,
+  } = useImageCrop();
 
   useEffect(() => {
     if (initialData) {
@@ -72,6 +41,7 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
         avatar: initialData.avatar || '',
         avatarFile: null
       });
+      resetImage(initialData.avatar || ''); // Nạp ảnh cũ vào hook
     } else {
       setFormData({
         email: '',
@@ -83,9 +53,8 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
         avatar: '',
         avatarFile: null
       });
+      resetImage(''); // Reset sạch ảnh
     }
-    setIsCropModalOpen(false);
-    setRawImageSrc(null);
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
@@ -106,9 +75,9 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
       formPayload.append('fullName', formData.fullName);
       formPayload.append('phoneNumber', formData.phoneNumber);
       formPayload.append('salary', Number(formData.salary));
-      // Nếu người dùng có chọn file ảnh mới được crop thì đính kèm vào
-      if (formData.avatarFile) {
-        formPayload.append('avatar', formData.avatarFile);
+      // Lấy file từ custom hook đính kèm vào payload
+      if (imageFile) {
+        formPayload.append('avatar', imageFile);
       }
 
       if (initialData) {
@@ -145,11 +114,11 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
         <form onSubmit={handleSubmit} id="accountForm" className={styles.modalBodyGrid}>
           {/* Khu vực Upload Avatar sử dụng react-dropzone */}
           <div className={styles.modalLeftCol}>
-            <div {...getRootProps()} className={styles.avatarUploadBox}>
-              <input {...getInputProps()} />
+            <div {...dropzone.getRootProps()} className={styles.avatarUploadBox}>
+              <input {...dropzone.getInputProps()} />
               <div className={styles.avatarPlaceholderCircle}>
-                {formData.avatar ? (
-                  <img src={formData.avatar} alt="Avatar" className={styles.previewImg} />
+                {previewUrl ? (
+                  <img src={previewUrl} alt="Avatar" className={styles.previewImg} />
                 ) : (
                   <span className={styles.placeholderText}>Chọn ảnh</span>
                 )}

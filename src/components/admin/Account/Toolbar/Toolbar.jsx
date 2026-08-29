@@ -1,7 +1,18 @@
 import React, { useState } from 'react';
 import styles from './Toolbar.module.css';
 
-function Toolbar({ statusList, sortList, sortType, bulkActions, selectedIds, handleChangeStatus, handleSearch, handleSortType, handleBulkActionSubmit }) {
+function Toolbar({
+  statusList,
+  sortList,
+  sortType,
+  bulkActions,
+  selectedIds,
+  searchPlaceholder = 'Tìm kiếm...',
+  handleChangeStatus,
+  handleSearch,
+  handleSortType,
+  handleBulkActionSubmit,
+}) {
   const [valueAction, setValueAction] = useState('');
 
   return (
@@ -24,7 +35,7 @@ function Toolbar({ statusList, sortList, sortType, bulkActions, selectedIds, han
       <div className={styles.searchBox}>
         <input
           type="text"
-          placeholder="Tìm kiếm theo tên, email, số điện..."
+          placeholder={searchPlaceholder}
           onChange={handleSearch}
         />
       </div>

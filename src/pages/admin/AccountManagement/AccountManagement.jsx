@@ -177,6 +177,7 @@ function AccountManagement() {
         sortType={sortType}
         bulkActions={bulkActions}
         selectedIds={selectedIds}
+        searchPlaceholder="Tìm kiếm theo tên, email, số điện thoại..."
         handleChangeStatus={handleChangeStatus}
         handleSearch={handleSearch}
         handleSortType={handleSortType}
