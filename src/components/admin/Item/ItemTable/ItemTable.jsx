@@ -146,23 +146,38 @@ function ItemTable({
         </table>
       </div>
 
-      {/* Phân trang */}
-      {paginationObj && paginationObj.totalPage > 1 && (
-        <div className={styles.paginationContainer}>
-          <span className={styles.paginationInfo}>
-            Hiển thị trang {paginationObj.currentPage} / {paginationObj.totalPage} ({paginationObj.totalCount} vật phẩm)
-          </span>
-          <ul className={styles.paginationList}>
-            {Array.from({ length: paginationObj.totalPage }, (_, i) => i + 1).map((pageNum) => (
-              <li
-                key={pageNum}
-                className={`${styles.pageItem} ${pageNum === paginationObj.currentPage ? styles.pageItemActive : ''}`}
-                onClick={() => handlePage(pageNum)}
+      {/* Phân trang dạng số và mũi tên */}
+      {paginationObj && paginationObj.totalPage >= 1 && (
+        <div className={styles.pagination}>
+          <button
+            type="button"
+            onClick={() => page > 1 && handlePage(page - 1)}
+            disabled={page <= 1}
+          >
+            &lt;
+          </button>
+
+          {[...Array(paginationObj?.totalPage || 0).keys()].map((index) => {
+            const pageNumber = index + 1;
+            return (
+              <button
+                key={pageNumber}
+                type="button"
+                onClick={() => handlePage(pageNumber)}
+                className={page === pageNumber ? styles.active : ''}
               >
-                {pageNum}
-              </li>
-            ))}
-          </ul>
+                {pageNumber}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() => page < (paginationObj?.totalPage || 1) && handlePage(page + 1)}
+            disabled={page >= (paginationObj?.totalPage || 1)}
+          >
+            &gt;
+          </button>
         </div>
       )}
     </div>
