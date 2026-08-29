@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../../../api/api';
 import styles from './ItemFormModal.module.css';
 import { toast } from 'react-toastify';
-import ImageCropModal from '../../../../shared/ImageCropModal/ImageCropModal';
-import { useImageCrop } from '../../../../hooks/useImageCrop';
+import { useDropzone } from 'react-dropzone';
+import ItemCanvasEditor from '../ItemCanvasEditor/ItemCanvasEditor';
 
 function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -15,19 +15,18 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
     height: 1,
     status: 'active',
     slotType: 'center_floor',
+    zIndex: 0,
+    scaleFactor: 1,
     image: '',
   });
 
-  const {
-    previewUrl,
-    imageFile,
-    rawImageSrc,
-    isCropModalOpen,
-    setIsCropModalOpen,
-    dropzone,
-    handleCropComplete,
-    resetImage,
-  } = useImageCrop();
+  // Ảnh preview & file gửi server
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [imageFile, setImageFile] = useState(null);
+
+  // Canvas editor
+  const [rawImageSrc, setRawImageSrc] = useState(null);
+  const [isCanvasEditorOpen, setIsCanvasEditorOpen] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -40,9 +39,13 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
         height: initialData.height ?? 1,
         status: initialData.status || 'active',
         slotType: initialData.slotType || 'center_floor',
+        zIndex: initialData.zIndex ?? 0,
+        scaleFactor: initialData.scaleFactor ?? 1,
         image: initialData.image || '',
       });
-      resetImage(initialData.image || '');
+      setPreviewUrl(initialData.image || '');
+      setImageFile(null);
+      setRawImageSrc(null);
     } else {
       setFormData({
         name: '',
@@ -53,11 +56,96 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
         height: 1,
         status: 'active',
         slotType: 'center_floor',
+        zIndex: 0,
+        scaleFactor: 1,
         image: '',
       });
-      resetImage('');
+      setPreviewUrl('');
+      setImageFile(null);
+      setRawImageSrc(null);
     }
   }, [initialData, isOpen]);
+
+  // ===== Validate PNG + Alpha =====
+  const validatePngAlpha = useCallback((file) => {
+    return new Promise((resolve, reject) => {
+      // 1) Kiểm tra MIME type
+      if (file.type !== 'image/png') {
+        reject(new Error('Chỉ chấp nhận file PNG! Vui lòng chọn file .png'));
+        return;
+      }
+
+      // 2) Kiểm tra có alpha channel (kênh trong suốt) không
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.min(img.naturalWidth, 100); // Chỉ cần check 1 phần nhỏ
+        canvas.height = Math.min(img.naturalHeight, 100);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        let hasTransparency = false;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] < 250) {
+            hasTransparency = true;
+            break;
+          }
+        }
+
+        if (!hasTransparency) {
+          reject(
+            new Error(
+              'File PNG không có kênh Alpha (trong suốt)! Vui lòng sử dụng ảnh PNG có nền trong suốt.',
+            ),
+          );
+          return;
+        }
+
+        resolve(img);
+        URL.revokeObjectURL(img.src);
+      };
+
+      img.onerror = () => {
+        reject(new Error('Không thể đọc file ảnh.'));
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
+  }, []);
+
+  // ===== Dropzone config (chỉ PNG) =====
+  const dropzone = useDropzone({
+    accept: { 'image/png': ['.png'] },
+    maxSize: 10 * 1024 * 1024, // 10MB cho ảnh PNG chất lượng cao
+    onDrop: async (acceptedFiles, rejectedFiles) => {
+      if (rejectedFiles.length > 0) {
+        toast.error('File không hợp lệ! Chỉ chấp nhận file .png (tối đa 10MB)');
+        return;
+      }
+
+      const file = acceptedFiles[0];
+      if (!file) return;
+
+      try {
+        await validatePngAlpha(file);
+        // Mở Canvas Editor
+        const imageUrl = URL.createObjectURL(file);
+        setRawImageSrc(imageUrl);
+        setIsCanvasEditorOpen(true);
+      } catch (error) {
+        toast.error(error.message);
+      }
+    },
+  });
+
+  // ===== Nhận file đã căn chỉnh từ Canvas Editor =====
+  const handleCanvasConfirm = (croppedFile, croppedPreviewUrl) => {
+    setPreviewUrl(croppedPreviewUrl);
+    setImageFile(croppedFile);
+  };
 
   if (!isOpen) return null;
 
@@ -78,6 +166,8 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
       formPayload.append('height', Number(formData.height || 1));
       formPayload.append('status', formData.status);
       formPayload.append('slotType', formData.slotType);
+      formPayload.append('zIndex', Number(formData.zIndex || 0));
+      formPayload.append('scaleFactor', Number(formData.scaleFactor || 1));
 
       if (imageFile) {
         formPayload.append('image', imageFile);
@@ -121,7 +211,7 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
         </div>
 
         <form onSubmit={handleSubmit} id="itemForm" className={styles.modalBodyGrid}>
-          {/* Khu vực Upload Ảnh Vật Phẩm (To & Sinh Động) */}
+          {/* Khu vực Upload Ảnh PNG (chỉ .png có alpha) */}
           <div className={styles.modalLeftCol}>
             <div {...dropzone.getRootProps()} className={styles.imageUploadBox}>
               <input {...dropzone.getInputProps()} />
@@ -131,15 +221,15 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
                 ) : (
                   <div className={styles.placeholderTextGroup}>
                     <span className={styles.placeholderIcon}>🖼️</span>
-                    <span className={styles.placeholderText}>Tải ảnh vật phẩm</span>
+                    <span className={styles.placeholderText}>Tải ảnh PNG (trong suốt)</span>
                   </div>
                 )}
               </div>
               <div className={styles.cameraIconBadge}>📸</div>
             </div>
             <p className={styles.uploadHintText}>
-              Kéo thả hoặc nhấp vào để tải ảnh vật phẩm lên<br />
-              (Hỗ trợ PNG, JPG, WEBP - Tối đa 5MB)
+              Kéo thả hoặc nhấp để tải ảnh vật phẩm<br />
+              <strong>Chỉ chấp nhận PNG có nền trong suốt</strong> (tối đa 10MB)
             </p>
           </div>
 
@@ -263,6 +353,32 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
                 <option value="other">Vị trí khác (other)</option>
               </select>
             </div>
+
+            <div className={styles.formRowGroup}>
+              <div className={styles.formGroup}>
+                <label>Z-Index (thứ tự lớp)</label>
+                <input
+                  type="number"
+                  name="zIndex"
+                  value={formData.zIndex}
+                  onChange={handleChange}
+                  placeholder="0"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Scale Factor (hệ số co giãn)</label>
+                <input
+                  type="number"
+                  name="scaleFactor"
+                  value={formData.scaleFactor}
+                  onChange={handleChange}
+                  placeholder="1"
+                  min="0.1"
+                  step="0.1"
+                />
+              </div>
+            </div>
           </div>
         </form>
 
@@ -275,12 +391,12 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
           </button>
         </div>
 
-        {/* Modal Cắt Ảnh */}
-        <ImageCropModal
-          isOpen={isCropModalOpen}
-          onClose={() => setIsCropModalOpen(false)}
+        {/* Canvas Editor 1000x1000 */}
+        <ItemCanvasEditor
+          isOpen={isCanvasEditorOpen}
+          onClose={() => setIsCanvasEditorOpen(false)}
           imgSrc={rawImageSrc}
-          onCropComplete={handleCropComplete}
+          onConfirm={handleCanvasConfirm}
         />
       </div>
     </div>

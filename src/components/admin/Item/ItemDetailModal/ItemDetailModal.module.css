@@ -81,7 +81,15 @@
   width: 100%;
   height: 340px;
   border-radius: 24px;
-  background: linear-gradient(135deg, #fff0f5, #fce7f3);
+  /* Checkerboard for transparent PNG */
+  background-image:
+    linear-gradient(45deg, #f0e4f0 25%, transparent 25%),
+    linear-gradient(-45deg, #f0e4f0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f0e4f0 75%),
+    linear-gradient(-45deg, transparent 75%, #f0e4f0 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-color: #fdf2f8;
   padding: 12px;
   box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8), 0 10px 25px rgba(244, 114, 182, 0.15);
   display: flex;
@@ -95,9 +103,8 @@
 .itemDetailImg {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 18px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: transform 0.3s ease;
 }
 
