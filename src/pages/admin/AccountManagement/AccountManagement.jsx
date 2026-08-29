@@ -17,6 +17,7 @@ function AccountManagement() {
   const [statusList, setStatusList] = useState([]);
   const [sortList, setSortList] = useState([]);
   const [paginationObj, setPaginationObj] = useState({});
+  const [bulkActions, setBulkActions] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,6 +26,52 @@ function AccountManagement() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [dataInUpdateModal, setDataInUpdateModal] = useState(null);
   const [dataInDetailModal, setDataInDetailModal] = useState(null);
+
+  // bulk action
+  const [selectedIds, setSelectedIds] = useState([]);
+  const allIds = accounts?.map(account => account._id) || [];
+  const isCheckAll = allIds.length > 0 && selectedIds.length === allIds.length;
+
+  const handleBulkActionSubmit = async (ids, type, payload) => {
+    if (!ids || ids.length === 0) {
+      toast.warning('Vui lòng chọn ít nhất một tài khoản');
+      return;
+    }
+
+    if (type == "delete") {
+      const confirmDelete = window.confirm('Bạn có chắc muốn xóa các bản ghi này không?');
+      if (!confirmDelete) return;
+    }
+
+    try {
+      const formPayload = { ids, payload };
+      await api.patch('/admin/accounts/bulk-actions', formPayload);
+      toast.success('Đã cập nhật thành công các bản ghi');
+
+      setSelectedIds([]);
+      fetchAccounts();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Lỗi không cập nhật được dữ liệu');
+    }
+  }
+
+  const handleCheckAllClick = () => {
+    // remove
+    if (isCheckAll) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(allIds);
+    }
+  }
+
+  const handleCheckBoxClick = (id) => {
+    // remove
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(item => item != id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  }
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -43,6 +90,7 @@ function AccountManagement() {
       setStatusList(response.data.statusList);
       setSortList(response.data.sortList);
       setPaginationObj(response.data.paginationObj);
+      setBulkActions(response.data.bulkActions);
     } catch (err) {
       toast.error(err.message || 'Lỗi khi tải danh sách tài khoản')
       setError(err.message || 'Lỗi khi tải danh sách tài khoản');
@@ -127,9 +175,12 @@ function AccountManagement() {
         statusList={statusList}
         sortList={sortList}
         sortType={sortType}
+        bulkActions={bulkActions}
+        selectedIds={selectedIds}
         handleChangeStatus={handleChangeStatus}
         handleSearch={handleSearch}
         handleSortType={handleSortType}
+        handleBulkActionSubmit={handleBulkActionSubmit}
       />
 
       {/* Bảng danh sách tài khoản */}
@@ -137,11 +188,15 @@ function AccountManagement() {
         accounts={accounts}
         page={page}
         paginationObj={paginationObj}
+        selectedIds={selectedIds}
+        isCheckAll={isCheckAll}
         handlePage={setPage}
         handleToggleStatus={handleToggleStatus}
         handleUpdateClick={handleUpdateClick}
         handleDetailClick={handleDetailClick}
         handleDeleteClick={handleDeleteClick}
+        handleCheckAllClick={handleCheckAllClick}
+        handleCheckBoxClick={handleCheckBoxClick}
       />
 
       {/* Modal Thêm / Cập nhật */}

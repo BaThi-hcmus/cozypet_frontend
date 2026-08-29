@@ -1,6 +1,6 @@
 .container {
   padding: 24px;
-  background-color: #f8fafc;
+  background-color: var(--surface);
   min-height: 100vh;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }

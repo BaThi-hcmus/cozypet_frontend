@@ -6,17 +6,29 @@ function AccountTable({
   accounts,
   page,
   paginationObj,
+  selectedIds,
+  isCheckAll,
   handlePage,
   handleToggleStatus,
   handleUpdateClick,
   handleDetailClick,
-  handleDeleteClick
+  handleDeleteClick,
+  handleCheckAllClick,
+  handleCheckBoxClick
 }) {
   return (
     <div className={styles.accountTableContainer}>
       <table>
         <thead>
           <tr>
+            <th>
+              <input
+                checked={isCheckAll}
+                onChange={handleCheckAllClick}
+                type="checkbox"
+                className="cursor-pointer"
+              />
+            </th>
             <th>Avatar</th>
             <th>Họ và tên</th>
             <th>Email</th>
@@ -27,65 +39,76 @@ function AccountTable({
           </tr>
         </thead>
         <tbody>
-          {accounts?.map((account) => (
-            <tr key={account._id || account.id}>
-              <td>
-                <img
-                  src={account.avatar || 'https://via.placeholder.com/40'}
-                  alt="Avatar"
-                  className={styles.avatarImg}
-                />
-              </td>
-              <td className={styles.fontMedium}>{account.fullName}</td>
-              <td>{account.email}</td>
-              <td>{account.phoneNumber || '---'}</td>
-              <td>
-                <span className={`${styles.roleBadge} ${account.role === 'admin' ? styles.admin : styles.staff}`}>
-                  {account.role === 'admin' ? 'Admin' : 'Staff'}
-                </span>
-              </td>
-              <td>
-                {account.status === 'active' ? (
-                  <span className={styles.statusActive} onClick={() => handleToggleStatus(account._id, 'active')}>
-                    Hoạt động
+          {accounts?.map((account) => {
+            const isChecked = selectedIds.includes(account._id);
+            return (
+              <tr key={account._id || account.id}>
+                <td>
+                  <input
+                    checked={isChecked}
+                    onChange={() => handleCheckBoxClick(account._id)}
+                    type="checkbox"
+                    className="cursor-pointer"
+                  />
+                </td>
+                <td>
+                  <img
+                    src={account.avatar || 'https://via.placeholder.com/40'}
+                    alt="Avatar"
+                    className={styles.avatarImg}
+                  />
+                </td>
+                <td className={styles.fontMedium}>{account.fullName}</td>
+                <td>{account.email}</td>
+                <td>{account.phoneNumber || '---'}</td>
+                <td>
+                  <span className={`${styles.roleBadge} ${account.role === 'admin' ? styles.admin : styles.staff}`}>
+                    {account.role === 'admin' ? 'Admin' : 'Staff'}
                   </span>
-                ) : (
-                  <span className={styles.statusInactive} onClick={() => handleToggleStatus(account._id, 'inactive')}>
-                    Dừng hoạt động
-                  </span>
-                )}
-              </td>
-              <td>
-                {/* Thay thế chữ bằng các nút icon kèm title hướng dẫn */}
-                <div className={styles.actionButtons}>
-                  <button
-                    type="button"
-                    className={styles.btnDetail}
-                    onClick={() => handleDetailClick(account)}
-                    title="Xem chi tiết"
-                  >
-                    <FaEye />
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.btnEdit}
-                    onClick={() => handleUpdateClick(account)}
-                    title="Chỉnh sửa"
-                  >
-                    <FaRegEdit />
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.btnDelete}
-                    onClick={() => handleDeleteClick(account._id)}
-                    title="Xóa tài khoản"
-                  >
-                    <FaTrashAlt />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
+                </td>
+                <td>
+                  {account.status === 'active' ? (
+                    <span className={styles.statusActive} onClick={() => handleToggleStatus(account._id, 'active')}>
+                      Hoạt động
+                    </span>
+                  ) : (
+                    <span className={styles.statusInactive} onClick={() => handleToggleStatus(account._id, 'inactive')}>
+                      Dừng hoạt động
+                    </span>
+                  )}
+                </td>
+                <td>
+                  {/* Thay thế chữ bằng các nút icon kèm title hướng dẫn */}
+                  <div className={styles.actionButtons}>
+                    <button
+                      type="button"
+                      className={styles.btnDetail}
+                      onClick={() => handleDetailClick(account)}
+                      title="Xem chi tiết"
+                    >
+                      <FaEye />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btnEdit}
+                      onClick={() => handleUpdateClick(account)}
+                      title="Chỉnh sửa"
+                    >
+                      <FaRegEdit />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btnDelete}
+                      onClick={() => handleDeleteClick(account._id)}
+                      title="Xóa tài khoản"
+                    >
+                      <FaTrashAlt />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
 
