@@ -106,45 +106,47 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
     ctx.strokeStyle = 'rgba(236, 72, 153, 0.3)';  // Thiết lập màu cho nét vẽ đường viền là màu hồng nhạt (độ mờ 0.3)
     ctx.lineWidth = 15;  // Độ dày của đường viền là 2 pixels
     ctx.setLineDash([12, 4]);  // Thiết lập kiểu nét đứt: cứ vẽ 8px liền rồi lại ngắt 4px trống, lặp lại liên tục
-    ctx.strokeRect(1, 1, CANVAS_SIZE - 2, CANVAS_SIZE - 2);
-    ctx.setLineDash([]);
+    ctx.strokeRect(1, 1, CANVAS_SIZE - 2, CANVAS_SIZE - 2); // // Vẽ khung hình chữ nhật rỗng bám sát mép canvas (cách lề 1px để không bị tràn mất nét)
+    ctx.setLineDash([]);  // // Xóa thiết lập nét đứt, trả bút vẽ về trạng thái nét liền bình thường cho các đoạn sau
 
     // Vẽ đường gạch ngang đáy (guideline)
-    ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([6, 3]);
-    ctx.beginPath();
-    ctx.moveTo(0, CANVAS_SIZE - 1);
-    ctx.lineTo(CANVAS_SIZE, CANVAS_SIZE - 1);
-    ctx.stroke();
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';  // Đặt màu nét vẽ là xanh dương nhạt (độ mờ 0.4)
+    ctx.lineWidth = 1;  // Độ dày nét vẽ là 1 pixel
+    ctx.setLineDash([6, 3]);  // Thiết lập nét đứt: vẽ 6px, ngắt 3px
+    ctx.beginPath();  // Ra lệnh bắt đầu một đường thẳng mới
+    ctx.moveTo(0, CANVAS_SIZE - 1);  // Đặt bút tại góc trái sát đáy (x = 0, y = 999)
+    ctx.lineTo(CANVAS_SIZE, CANVAS_SIZE - 1); // Kéo đường thẳng ngang sang tận góc phải đáy (x = 1000, y = 999)
+    ctx.stroke(); // Tiến hành hiển thị đường gạch ngang đáy lên canvas
+
     // Đường giữa dọc
-    ctx.beginPath();
-    ctx.moveTo(CANVAS_SIZE / 2, 0);
-    ctx.lineTo(CANVAS_SIZE / 2, CANVAS_SIZE);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.beginPath();  // Bắt đầu đường thẳng mới  
+    ctx.moveTo(CANVAS_SIZE / 2, 0); // Đặt bút ở điểm giữa phía trên đỉnh (x = 500, y = 0)
+    ctx.lineTo(CANVAS_SIZE / 2, CANVAS_SIZE); // Kéo thẳng tuột xuống đến đáy (x = 500, y = 1000)
+    ctx.stroke(); // Hiển thị đường dọc lên canvas
+    ctx.setLineDash([]);  // Reset lại nét đứt về mặc định
 
     // Vẽ item
-    const scaledW = img.naturalWidth * zoom;
-    const scaledH = img.naturalHeight * zoom;
-    ctx.drawImage(img, itemX, itemY, scaledW, scaledH);
+    const scaledW = img.naturalWidth * zoom;  // Tính chiều rộng thực tế của ảnh nhân với hệ số zoom hiện tại
+    const scaledH = img.naturalHeight * zoom; // Tính chiều cao thực tế của ảnh nhân với hệ số zoom hiện tại
+    ctx.drawImage(img, itemX, itemY, scaledW, scaledH); // Dán hình ảnh item lên canvas tại tọa độ (itemX, itemY) với kích thước đã co giãn
 
     // Vẽ viền bao quanh item (Bounding box) để dễ căn chỉnh
     ctx.strokeStyle = 'rgba(16, 185, 129, 0.8)'; // Xanh lục nhạt
     ctx.lineWidth = 4;
     ctx.setLineDash([4, 2]);
-    ctx.strokeRect(itemX, itemY, scaledW, scaledH);
+    ctx.strokeRect(itemX, itemY, scaledW, scaledH); // Vẽ một khung hình chữ nhật bọc khít lấy item theo đúng tọa độ và kích thước hiện tại
     ctx.setLineDash([]);
 
     // Kiểm tra item có nằm gọn trong khung không
     const fits =
-      itemX >= -1 &&
-      itemY >= -1 &&
-      itemX + scaledW <= CANVAS_SIZE + 1 &&
-      itemY + scaledH <= CANVAS_SIZE + 1;
+      itemX >= -1 &&  // Kiểm tra mép trái item không vượt quá biên trái quá 1px
+      itemY >= -1 &&  // Kiểm tra mép trên item không vượt quá biên trên quá 1px
+      itemX + scaledW <= CANVAS_SIZE + 1 && // Kiểm tra mép phải item không vượt quá giới hạn 1000px quá 1px
+      itemY + scaledH <= CANVAS_SIZE + 1; // Kiểm tra mép dưới item không vượt quá giới hạn 1000px quá 1px
     setIsItemFit(fits);
   }, [itemX, itemY, zoom]);
 
+  // khi admin kéo thả item hoặc zoom thì hàm này được thực thi => vẽ lại item ra giao diện
   useEffect(() => {
     if (imageLoaded) {
       drawCanvas();
@@ -152,38 +154,59 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
   }, [imageLoaded, drawCanvas]);
 
   // ===== Drag handlers =====
+  // hàm này được thực thi ngay khi admin đè chuột trái xuống để bắt đầu di chuyển item
   const handleMouseDown = (e) => {
     e.preventDefault();
-    setIsDragging(true);
+    setIsDragging(true);  // đánh dấu bắt đầu hành động kéo thả
     const rect = canvasRef.current.getBoundingClientRect();
+
+    // lưu trữ toàn bộ mốc khởi điểm
     dragStartRef.current = {
+      // ghi lại tọa độ con trỏ chuột ngay khi vừa bấm xuống
       x: e.clientX,
       y: e.clientY,
+      // ghi lại tọa độ của item trên canvas ngay trước khi bắt đầu kéo
       startItemX: itemX,
       startItemY: itemY,
     };
   };
 
+  // hàm này liên tục được kích hoạt mỗi khi con trỏ chuột di chuyển
+  // Nó làm nhiệm vụ đo đạc xem con trỏ chuột đã dịch chuyển đi bao nhiêu khoảng cách 
+  // so với lúc mới bấm chuột xuống, từ đó tính toán và cập nhật lại tọa độ mới 
+  // cho item theo thời gian thực.
+  // Nó chỉ được khởi tạo lại khi trạng thái kéo (isDragging) thả được thay đổi
   const handleMouseMove = useCallback(
     (e) => {
       if (!isDragging) return;
+      // tính toán khoảng cách di chuyển của item
+      // hệ số SCALE_RATIO giúp quy đổi chính xác số pixel chuột dịch chuyển 
+      // trên màn hình thành số pixel tương ứng bên trong không gian tọa độ thực của canvas.
       const dx = (e.clientX - dragStartRef.current.x) / SCALE_RATIO;
       const dy = (e.clientY - dragStartRef.current.y) / SCALE_RATIO;
+
+      // Cập nhật vị trí mới của item
+      // từ đó kích hoạt hàm drawCanvas giúp vẻ lại hình ảnh ngay lập tức
       setItemX(dragStartRef.current.startItemX + dx);
       setItemY(dragStartRef.current.startItemY + dy);
     },
     [isDragging],
   );
 
+  // Khi admin nhất chuột lên (tức là hoàn thành quá trình kéo thả)
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
   }, []);
 
   useEffect(() => {
+    // khi admin thực hiện kéo thả
     if (isDragging) {
+      // Lắng nghe mọi chuyển động của chuột trên toàn màn hình để gọi hàm handleMouseMove cập nhật tọa độ item.
       window.addEventListener('mousemove', handleMouseMove);
+      // Lắng nghe hành động thả tay ra khỏi chuột ở bất cứ đâu.
       window.addEventListener('mouseup', handleMouseUp);
     }
+    // khi admin kéo xong và thả tay ra => dọn dẹp  
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
@@ -219,14 +242,19 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
   }, []);
 
   // ===== Zoom change =====
+  // Khi phóng to hay thu nhỏ item bằng thanh trượt (slider), 
+  // item sẽ luôn đứng im tại chỗ (giữ nguyên tâm) chứ không bị giật lùi hay lệch đi đâu mất
   const handleZoomChange = (e) => {
     const img = imageRef.current;
     if (!img) return;
 
+    // lấy ra hệ số zoom mới (khi admin kéo thanh trượt)
     const newZoom = parseFloat(e.target.value);
     // Giữ item căn giữa khi zoom
+    // kích thước cũ trước khi zoom
     const oldScaledW = img.naturalWidth * zoom;
     const oldScaledH = img.naturalHeight * zoom;
+    // kích thước mới sau khi zoom
     const newScaledW = img.naturalWidth * newZoom;
     const newScaledH = img.naturalHeight * newZoom;
 
@@ -240,6 +268,7 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
   };
 
   // ===== Reset position: căn giữa ngang, sát đáy =====
+  // hàm này thực hiện khi admin bấm nút reset lại vị trí
   const handleResetPosition = () => {
     const img = imageRef.current;
     if (!img) return;
@@ -251,12 +280,14 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
   };
 
   // ===== Xuất ảnh PNG 1000x1000 =====
+  // hàm này được gọi khi admin bấm xác nhận và lưu ảnh
   const handleConfirm = () => {
     const canvas = canvasRef.current;
     const img = imageRef.current;
     if (!canvas || !img) return;
 
     // Tạo canvas mới sạch sẽ (không có guideline)
+    // tạo ra thẻ canvas ảo với kích thước 1000x1000
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = CANVAS_SIZE;
     exportCanvas.height = CANVAS_SIZE;
@@ -264,6 +295,7 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
     if (!ctx) return;
 
     // Nền trong suốt
+    // xóa trống canvas ảo để đảm bảo nền của nó trong suốt
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
     // Vẽ item
@@ -271,11 +303,15 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
     const scaledH = img.naturalHeight * zoom;
     ctx.drawImage(img, itemX, itemY, scaledW, scaledH);
 
+    // nén toàn bộ nội dung hình ảnh trên canvas thành dữ liệu nhị phân (blob) dưới dạng ảnh PNG
     exportCanvas.toBlob(
       (blob) => {
         if (!blob) return;
+        // đóng gói bolb thành đối tượng File hoàn chỉnh, file này sẵn sàng để gửi sang server
         const file = new File([blob], 'item.png', { type: 'image/png' });
+        // tạo url tạm thời để preview ảnh
         const previewUrl = URL.createObjectURL(blob);
+        // truyền dữ liệu ra component cha
         onConfirm(file, previewUrl);
         onClose();
       },
@@ -291,7 +327,7 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
         {/* Header */}
         <div className={styles.editorHeader}>
           <h3>
-            <span>🎯</span> Căn chỉnh vật phẩm (1000 × 1000)
+            <span>🎯</span> Căn chỉnh vật phẩm
           </h3>
           <button type="button" onClick={onClose}>×</button>
         </div>
@@ -318,7 +354,7 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
             <input
               type="range"
               min="0.05"
-              max="3"
+              max="5"
               step="0.01"
               value={zoom}
               onChange={handleZoomChange}
