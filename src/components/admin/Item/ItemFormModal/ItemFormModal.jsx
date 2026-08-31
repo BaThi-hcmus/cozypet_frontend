@@ -15,8 +15,6 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
     height: 1,
     status: 'active',
     slotType: 'center_floor',
-    zIndex: 0,
-    scaleFactor: 1,
     image: '',
   });
 
@@ -39,8 +37,6 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
         height: initialData.height ?? 1,
         status: initialData.status || 'active',
         slotType: initialData.slotType || 'center_floor',
-        zIndex: initialData.zIndex ?? 0,
-        scaleFactor: initialData.scaleFactor ?? 1,
         image: initialData.image || '',
       });
       setPreviewUrl(initialData.image || '');
@@ -56,8 +52,6 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
         height: 1,
         status: 'active',
         slotType: 'center_floor',
-        zIndex: 0,
-        scaleFactor: 1,
         image: '',
       });
       setPreviewUrl('');
@@ -166,8 +160,6 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
       formPayload.append('height', Number(formData.height || 1));
       formPayload.append('status', formData.status);
       formPayload.append('slotType', formData.slotType);
-      formPayload.append('zIndex', Number(formData.zIndex || 0));
-      formPayload.append('scaleFactor', Number(formData.scaleFactor || 1));
 
       if (imageFile) {
         formPayload.append('image', imageFile);
@@ -354,31 +346,7 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
               </select>
             </div>
 
-            <div className={styles.formRowGroup}>
-              <div className={styles.formGroup}>
-                <label>Z-Index (thứ tự lớp)</label>
-                <input
-                  type="number"
-                  name="zIndex"
-                  value={formData.zIndex}
-                  onChange={handleChange}
-                  placeholder="0"
-                />
-              </div>
 
-              <div className={styles.formGroup}>
-                <label>Scale Factor (hệ số co giãn)</label>
-                <input
-                  type="number"
-                  name="scaleFactor"
-                  value={formData.scaleFactor}
-                  onChange={handleChange}
-                  placeholder="1"
-                  min="0.1"
-                  step="0.1"
-                />
-              </div>
-            </div>
           </div>
         </form>
 

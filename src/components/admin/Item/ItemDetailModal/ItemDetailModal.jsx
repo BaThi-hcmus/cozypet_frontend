@@ -105,16 +105,6 @@ function ItemDetailModal({ isOpen, onClose, data, onEditClick }) {
               </div>
 
               <div className={styles.detailItem}>
-                <span className={styles.detailLabel}>Z-Index (thứ tự lớp)</span>
-                <span className={styles.detailValue}>{data.zIndex ?? 0}</span>
-              </div>
-
-              <div className={styles.detailItem}>
-                <span className={styles.detailLabel}>Scale Factor (hệ số co giãn)</span>
-                <span className={styles.detailValue}>{data.scaleFactor ?? 1}</span>
-              </div>
-
-              <div className={styles.detailItem}>
                 <span className={styles.detailLabel}>Ngày khởi tạo</span>
                 <span className={styles.detailValue}>{formattedCreatedAt}</span>
               </div>

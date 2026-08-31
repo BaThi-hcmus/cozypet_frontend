@@ -31,12 +31,25 @@
   vertical-align: middle;
 }
 
+.accountTableContainer tbody tr {
+  transition: background 0.2s;
+}
+
+.accountTableContainer tbody tr:hover {
+  background: #fff0f5;
+}
+
 .avatarImg {
   width: 40px;
   height: 40px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid #e5e7eb;
+  transition: transform 0.2s;
+}
+
+.accountTableContainer tbody tr:hover .avatarImg {
+  transform: scale(1.1);
 }
 
 .fontMedium {
