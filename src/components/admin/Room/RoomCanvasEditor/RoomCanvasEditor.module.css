@@ -43,6 +43,28 @@
   gap: 8px;
 }
 
+.headerControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btnAddSlotHeader {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnAddSlotHeader:hover {
+  background: #2563eb;
+}
+
 .btnClose {
   background: #e2e8f0;
   border: none;
@@ -70,21 +92,52 @@
   background: #f1f5f9;
 }
 
-/* LEFT COLUMN: CANVAS */
+.editorBodySingleCol {
+  justify-content: center;
+}
+
+.editorBodyTwoCol {
+  justify-content: flex-start;
+}
+
+/* COLUMN 1: CANVAS — 3/4 width when 2 columns */
 .canvasCol {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   padding: 20px;
   overflow-y: auto;
+  min-width: 0;
+}
+
+.editorBodySingleCol .canvasCol {
+  justify-content: flex-start;
+}
+
+.editorBodySingleCol .canvasColInner {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.editorBodyTwoCol .canvasCol {
+  flex: 3;
+  justify-content: flex-start;
+}
+
+.canvasColInner {
+  width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .canvasWrapperArea {
   display: flex;
   justify-content: center;
   align-items: center;
-  flex: 1;
 }
 
 .canvasWrapper {
@@ -141,6 +194,13 @@
   flex: 1;
 }
 
+.bgHintText {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  text-align: center;
+}
+
 .btnLock {
   width: 100%;
   padding: 12px;
@@ -181,13 +241,86 @@
   text-align: center;
 }
 
-/* RIGHT COLUMN: SLOTS */
-.slotsCol {
-  width: 380px;
+/* COLUMN 2: side panel (form hoặc list) — 1/4 width */
+.sideCol {
+  flex: 1;
+  min-width: 280px;
+  max-width: 25%;
   background: #fff;
   border-left: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slotFormHeader {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.slotFormHeader h4 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 16px;
+}
+
+.slotFormActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btnCancelSlot {
+  background: #fff;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnCancelSlot:hover {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #94a3b8;
+}
+
+.btnCompleteSlot {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnCompleteSlot:hover {
+  background: #059669;
 }
 
 .slotsHeader {
@@ -201,20 +334,7 @@
 .slotsHeader h4 {
   margin: 0;
   color: #1e293b;
-}
-
-.btnAddSlot {
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btnAddSlot:hover {
-  background: #2563eb;
+  font-size: 15px;
 }
 
 .slotsList {
@@ -264,6 +384,11 @@
   font-size: 12px;
 }
 
+.slotCategory {
+  color: #8b5cf6 !important;
+  font-style: italic;
+}
+
 .btnDelSlotMin {
   background: none;
   border: none;
@@ -276,26 +401,11 @@
   color: #ef4444;
 }
 
-.emptySlotMsg {
-  color: #94a3b8;
-  text-align: center;
-  margin-top: 20px;
-  font-size: 14px;
-}
-
 .slotDetailForm {
   padding: 16px;
-  border-top: 1px solid #e2e8f0;
-  background: #f8fafc;
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.slotDetailForm h5 {
-  margin: 0;
-  color: #1e293b;
-  font-size: 15px;
 }
 
 .formGroup {
