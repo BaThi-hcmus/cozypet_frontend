@@ -4,6 +4,11 @@ import styles from './RoomDetailModal.module.css';
 function RoomDetailModal({ isOpen, onClose, data, onEditClick }) {
   if (!isOpen || !data) return null;
 
+  const backgroundSrc =
+    data.backgroundUrl ||
+    data.background_url ||
+    'https://via.placeholder.com/400?text=Room';
+
   const handleEdit = () => {
     onClose();
     if (onEditClick) onEditClick(data);
@@ -20,12 +25,14 @@ function RoomDetailModal({ isOpen, onClose, data, onEditClick }) {
           <button type="button" onClick={onClose}>×</button>
         </div>
         <div className={styles.modalBody}>
-          <div className={styles.imageSection}>
-            <img 
-              src={data.backgroundUrl || data.background_url || 'https://via.placeholder.com/400?text=Room'} 
-              alt={data.name} 
-              className={styles.roomImage} 
-            />
+          <div className={styles.imageColumn}>
+            <div className={styles.imageSection}>
+              <img
+                src={backgroundSrc}
+                alt={data.name}
+                className={styles.roomImage}
+              />
+            </div>
           </div>
           <div className={styles.infoSection}>
             <div className={styles.infoRow}>

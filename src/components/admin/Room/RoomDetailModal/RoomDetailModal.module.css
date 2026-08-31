@@ -22,7 +22,7 @@
 .modalContainer {
   background: #ffffff;
   width: 100%;
-  max-width: 500px;
+  max-width: 920px;
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
   display: flex;
@@ -71,27 +71,43 @@
 .modalBody {
   padding: 24px;
   display: flex;
-  flex-direction: column;
-  gap: 20px;
+  flex-direction: row;
+  gap: 24px;
+  align-items: stretch;
+  min-height: 420px;
+}
+
+.imageColumn {
+  flex: 1.15;
+  min-width: 0;
+  display: flex;
 }
 
 .imageSection {
-  width: 100%;
+  flex: 1;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .roomImage {
   width: 100%;
-  height: auto;
+  height: 100%;
+  min-height: 420px;
+  object-fit: contain;
   display: block;
 }
 
 .infoSection {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  padding: 4px 0;
 }
 
 .infoRow {
@@ -158,4 +174,15 @@
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .modalBody {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .roomImage {
+    min-height: 260px;
+  }
 }

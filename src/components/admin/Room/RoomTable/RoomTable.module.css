@@ -1,9 +1,9 @@
 .tableContainer {
   background: #ffffff;
   border-radius: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  border: 1px solid #f1f5f9;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  padding: 24px;
+  margin-bottom: 24px;
 }
 
 .tableWrapper {
@@ -36,19 +36,25 @@
 }
 
 .table tbody tr {
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
 .table tbody tr:hover {
-  background: #f8fafc;
+  background: #fff0f5;
 }
 
 .imgThumb {
-  width: 60px;
-  height: 60px;
+  width: 52px;
+  height: 52px;
   object-fit: cover;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  border: 2px solid #fbcfe8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s;
+}
+
+.table tbody tr:hover .imgThumb {
+  transform: scale(1.1);
 }
 
 .codeText {
@@ -80,24 +86,25 @@
   font-weight: 600;
   cursor: pointer;
   display: inline-block;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
 }
 
 .statusInactive {
-  background: #f1f5f9;
-  color: #64748b;
+  background: #fee2e2;
+  color: #b91c1c;
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   display: inline-block;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
 }
 
 .statusActive:hover,
 .statusInactive:hover {
   opacity: 0.8;
+  transform: scale(1.05);
 }
 
 .actionButtons {
@@ -145,44 +152,43 @@
   background: #fecdd3;
 }
 
-/* Pagination */
+/* Phân trang */
 .pagination {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
-  padding: 20px;
-  gap: 8px;
-  border-top: 1px solid #f1f5f9;
+  gap: 6px;
+  margin-top: 20px;
+  padding-right: 12px;
 }
 
 .pagination button {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #475569;
+  background: transparent;
+  border: 1px solid transparent;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 600;
+  color: #4b5563;
   cursor: pointer;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.pagination button:hover:not(:disabled) {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-}
-
-.pagination button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: #f8fafc;
+  transition: all 0.2s;
 }
 
 .pagination button.active {
-  background: #10b981;
-  color: #ffffff;
-  border-color: #10b981;
+  background: #fbcfe8;
+  color: #be185d;
+  border-color: #f472b6;
+}
+
+.pagination button:hover:not(.active):not(:disabled) {
+  background: #f3f4f6;
+}
+
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

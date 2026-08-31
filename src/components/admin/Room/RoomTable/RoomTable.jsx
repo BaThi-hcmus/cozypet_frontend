@@ -55,7 +55,7 @@ function RoomTable({
                     </td>
                     <td>
                       <img
-                        src={room.backgroundUrl || 'https://via.placeholder.com/60?text=Room'}
+                        src={room.backgroundUrl || room.background_url || 'https://via.placeholder.com/60?text=Room'}
                         alt={room.name}
                         className={styles.imgThumb}
                       />
