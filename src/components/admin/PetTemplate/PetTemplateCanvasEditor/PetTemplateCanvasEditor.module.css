@@ -1,0 +1,229 @@
+.editorOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+    padding: 16px; /* Tạo khoảng thở với mép màn hình thiết bị */
+  }
+  
+  .editorContainer {
+    background: #ffffff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 460px;
+    max-height: 90vh; /* Giới hạn tối đa 90% chiều cao màn hình */
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalScaleIn 0.2s ease-out;
+  }
+  
+  @keyframes modalScaleIn {
+    from {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  .editorHeader {
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f3f4f6;
+    flex-shrink: 0; /* Không bị bóp méo khi modal thu gọn */
+  }
+  
+  .editorHeader h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .editorHeader button {
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+  
+  .editorHeader button:hover {
+    color: #4b5563;
+  }
+  
+  /* Phần nội dung có thể cuộn (Scrollable) khi vượt quá chiều cao màn hình */
+  .canvasArea {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    background-color: #f9fafb;
+    overflow-y: auto; /* Cho phép cuộn dọc */
+    flex: 1; /* Tự động co giãn theo không gian còn lại */
+  }
+  
+  .canvasWrapper {
+    width: 320px;   /* Thu nhỏ kích thước hiển thị canvas một chút để vừa vặn màn hình laptop/máy tính bảng */
+    height: 320px;
+    background: #ffffff;
+    border: 2px dashed #d1d5db;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: grab;
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.03);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  
+  .canvasWrapper:active {
+    cursor: grabbing;
+  }
+  
+  .canvasWrapper canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  
+  .controlsRow {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #ffffff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+  }
+  
+  .controlLabel {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #4b5563;
+    white-space: nowrap;
+  }
+  
+  .zoomSlider {
+    flex: 1;
+    cursor: pointer;
+    accent-color: #3b82f6;
+  }
+  
+  .zoomValue {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1f2937;
+    width: 45px;
+    text-align: right;
+  }
+  
+  .btnResetPosition {
+    width: 100%;
+    padding: 8px;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  
+  .btnResetPosition:hover {
+    background: #e5e7eb;
+  }
+  
+  .validationRow {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-align: center;
+  }
+  
+  .validOk {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+  
+  .validError {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+  
+  .validInfo {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+  }
+  
+  .editorFooter {
+    padding: 14px 20px;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: #ffffff;
+    flex-shrink: 0; /* Cố định footer luôn hiển thị rõ ràng */
+  }
+  
+  .btnCancel {
+    padding: 8px 16px;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+  }
+  
+  .btnCancel:hover {
+    background: #f9fafb;
+  }
+  
+  .btnConfirm {
+    padding: 8px 20px;
+    background: #3b82f6;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  
+  .btnConfirm:hover:not(:disabled) {
+    background: #2563eb;
+  }
+  
+  .btnConfirm:disabled {
+    background: #93c5fd;
+    cursor: not-allowed;
+  }

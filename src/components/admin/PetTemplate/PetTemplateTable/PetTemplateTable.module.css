@@ -1,0 +1,235 @@
+.tableContainer {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+}
+
+.table th {
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table th:first-child {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+  width: 48px;
+  text-align: center;
+}
+
+.table th:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  text-align: center;
+}
+
+.table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.table td:first-child {
+  text-align: center;
+}
+
+.table tbody tr {
+  transition: background 0.2s;
+}
+
+.table tbody tr:hover {
+  background: #fff0f5;
+}
+
+.avatarThumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 2px solid #fbcfe8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s;
+}
+
+.table tbody tr:hover .avatarThumb {
+  transform: scale(1.1);
+}
+
+.codeText {
+  font-weight: 700;
+  color: #0f172a;
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.nameText {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.speciesBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.speciesDog {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.speciesCat {
+  background: #fbcfe8;
+  color: #be185d;
+}
+
+.traitSummary {
+  font-size: 12px;
+  color: #64748b;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusActive {
+  background: #dcfce7;
+  color: #15803d;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+  transition: all 0.2s;
+}
+
+.statusInactive {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+  transition: all 0.2s;
+}
+
+.statusActive:hover,
+.statusInactive:hover {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
+.actionButtons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btnDetail,
+.btnEdit,
+.btnDelete {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btnDetail {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.btnDetail:hover {
+  background: #0284c7;
+  color: #fff;
+}
+
+.btnEdit {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.btnEdit:hover {
+  background: #d97706;
+  color: #fff;
+}
+
+.btnDelete {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.btnDelete:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  padding-right: 12px;
+}
+
+.pagination button {
+  background: transparent;
+  border: 1px solid transparent;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.pagination button.active {
+  background: #fbcfe8;
+  color: #be185d;
+  border-color: #f472b6;
+}
+
+.pagination button:hover:not(.active):not(:disabled) {
+  background: #f3f4f6;
+}
+
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

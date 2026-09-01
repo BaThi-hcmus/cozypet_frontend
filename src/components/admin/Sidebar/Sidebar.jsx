@@ -49,6 +49,14 @@ const Sidebar = () => {
         </NavLink>
 
         <NavLink
+          to="/admin/pet-templates"
+          className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}
+        >
+          <span className="material-symbols-outlined">pets</span>
+          Pet Templates
+        </NavLink>
+
+        <NavLink
           to="/admin/rooms"
           className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}
         >
