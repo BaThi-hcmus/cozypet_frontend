@@ -1,0 +1,66 @@
+/* Hiệu ứng thở nhẹ khi đứng yên */
+@keyframes idleBreathing {
+
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-4px) scale(1.01);
+  }
+}
+
+/* Hiệu ứng mèo ngả đầu khi bị click */
+@keyframes catHeadTilt {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  30% {
+    transform: rotate(-15deg) translateY(-5px);
+  }
+
+  70% {
+    transform: rotate(10deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* Hiệu ứng chó lắc đầu lưỡi lè khi bị click */
+@keyframes dogHeadShake {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  20% {
+    transform: rotate(12deg) scale(1.05);
+  }
+
+  40% {
+    transform: rotate(-12deg);
+  }
+
+  60% {
+    transform: rotate(8deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-idle-breathing {
+  animation: idleBreathing 3s ease-in-out infinite;
+}
+
+.animate-cat-head-tilt {
+  animation: catHeadTilt 0.6s ease-in-out;
+}
+
+.animate-dog-head-shake {
+  animation: dogHeadShake 0.6s ease-in-out;
+}

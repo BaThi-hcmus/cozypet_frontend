@@ -32,6 +32,23 @@ function ItemManagement() {
   const allIds = items?.map((item) => item._id) || [];
   const isCheckAll = allIds.length > 0 && selectedIds.length === allIds.length;
 
+  // hằng số
+  const [constants, setConstants] = useState(null);
+
+  // chỉ chạy 1 lần duy nhất để tải các hằng số
+  const fetchConstant = useCallback(async () => {
+    try {
+      const result = await api.get('/admin/items/constants');
+      setConstants(result.data.data);
+    } catch (error) {
+      toast.error('Lấy các hằng số thất bại');
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConstant();
+  }, [fetchConstant]);
+
   const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
@@ -196,6 +213,7 @@ function ItemManagement() {
           paginationObj={paginationObj}
           selectedIds={selectedIds}
           isCheckAll={isCheckAll}
+          constants={constants}
           handlePage={setPage}
           handleToggleStatus={handleToggleStatus}
           handleDetailClick={handleDetailClick}
@@ -208,6 +226,7 @@ function ItemManagement() {
 
       {/* Modal Thêm mới / Cập nhật */}
       <ItemFormModal
+        constants={constants}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         initialData={dataInUpdateModal}
@@ -216,6 +235,7 @@ function ItemManagement() {
 
       {/* Modal Xem chi tiết */}
       <ItemDetailModal
+        constants={constants}
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
         data={dataInDetailModal}

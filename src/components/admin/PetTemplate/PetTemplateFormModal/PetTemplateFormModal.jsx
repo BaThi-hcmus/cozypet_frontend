@@ -4,6 +4,7 @@ import styles from './PetTemplateFormModal.module.css';
 import { toast } from 'react-toastify';
 import { useDropzone } from 'react-dropzone';
 import PetCanvasEditor from '../PetTemplateCanvasEditor/PetTemplateCanvasEditor';
+import PetPartCropperModal from '../PetPartCropperModal/PetPartCropperModal';
 
 function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -13,11 +14,22 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Quản lý state cho luồng xử lý ảnh qua PetCanvasEditor
+  // Quản lý state cho luồng xử lý ảnh qua PetCanvasEditor & PetPartCropperModal
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [rawImageSrc, setRawImageSrc] = useState('');
+
+  // State lưu trữ các phần đã cắt riêng biệt (Head & Body)
+  const [headFile, setHeadFile] = useState(null);
+  const [bodyFile, setBodyFile] = useState(null);
+  const [headPreview, setHeadPreview] = useState('');
+  const [bodyPreview, setBodyPreview] = useState('');
+
+  // Quản lý hiển thị các Modal con
   const [isCanvasModalOpen, setIsCanvasModalOpen] = useState(false);
+  const [isPartCropperOpen, setIsPartCropperOpen] = useState(false);
+  // chứa url ảnh để hiển thị ở modal cropper
+  const [processedGeneralImgSrc, setProcessedGeneralImgSrc] = useState('');
 
   // Hook dropzone để bắt sự kiện chọn file từ máy hoặc kéo thả
   const dropzone = useDropzone({
@@ -45,6 +57,8 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
       });
       setPreviewUrl(initialData.avatar || '');
       setImageFile(null);
+      setHeadFile(null);
+      setBodyFile(null);
     } else {
       setFormData({
         templateId: '',
@@ -53,6 +67,8 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
       });
       setPreviewUrl('');
       setImageFile(null);
+      setHeadFile(null);
+      setBodyFile(null);
     }
     setIsSubmitting(false);
   }, [initialData, isOpen]);
@@ -65,9 +81,24 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
   };
 
   // Callback nhận file ảnh đã được đóng gói chuẩn 1000x1000 từ PetCanvasEditor
+  // Khi hoàn tất canvas chỉnh sửa tổng thể ➔ Chuyển tiếp sang mở Modal Cắt Đầu/Thân
   const handleCanvasConfirm = (file, newPreviewUrl) => {
     setImageFile(file);
     setPreviewUrl(newPreviewUrl);
+    setProcessedGeneralImgSrc(newPreviewUrl);
+    setIsCanvasModalOpen(false);
+
+    // Tự động mở ngay modal cắt đầu thân tiếp theo
+    setIsPartCropperOpen(true);
+  };
+
+  // Khi hoàn tất việc cắt đầu và thân từ PetPartCropperModal
+  const handlePartCropperConfirm = ({ headFile, headPreview, bodyFile, bodyPreview }) => {
+    setHeadFile(headFile);
+    setHeadPreview(headPreview);
+    setBodyFile(bodyFile);
+    setBodyPreview(bodyPreview);
+    toast.success('Đã tách thành công phần Đầu và Thân cho khung chuyển động!');
   };
 
   const handleSubmit = async (e) => {
@@ -88,6 +119,10 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
       if (imageFile) {
         formPayload.append('avatar', imageFile);
       }
+
+      // Gắn thêm file Đầu và Thân đã cắt vào Payload để backend xử lý Master Rig
+      if (headFile) formPayload.append('head', headFile);
+      if (bodyFile) formPayload.append('body', bodyFile);
 
       if (initialData) {
         await api.patch(`/admin/pet-templates/update/${initialData._id}`, formPayload, {
@@ -146,6 +181,29 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
               <br />
               <strong>Bắt buộc khi tạo mới</strong> (tối đa 5MB)
             </p>
+
+            {/* PHẦN PREVIEW ĐẦU & THÂN MỚI (TO RÕ, CÂN ĐỐI) */}
+            {(headPreview || bodyPreview) && (
+              <div className={styles.previewPartsSection}>
+                <div className={styles.previewPartsTitle}>
+                  <span>🧩 Phân vùng đã cắt:</span>
+                </div>
+                <div className={styles.previewPartsWrapper}>
+                  {headPreview && (
+                    <div className={styles.partPreviewCard}>
+                      <img src={headPreview} alt="Đầu pet" className={styles.partPreviewImage} />
+                      <span className={styles.partPreviewLabel}>Phần Đầu</span>
+                    </div>
+                  )}
+                  {bodyPreview && (
+                    <div className={styles.partPreviewCard}>
+                      <img src={bodyPreview} alt="Thân pet" className={styles.partPreviewImage} />
+                      <span className={styles.partPreviewLabel}>Phần Thân</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className={styles.modalRightCol}>
@@ -230,6 +288,14 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
           onClose={() => setIsCanvasModalOpen(false)}
           imgSrc={rawImageSrc}
           onConfirm={handleCanvasConfirm}
+        />
+
+        {/* Modal Cắt khung Đầu và Thân cho Master Rig */}
+        <PetPartCropperModal
+          isOpen={isPartCropperOpen}
+          onClose={() => setIsPartCropperOpen(false)}
+          imgSrc={processedGeneralImgSrc}
+          onConfirm={handlePartCropperConfirm}
         />
       </div>
     </div>

@@ -8,6 +8,7 @@ function ItemTable({
   paginationObj,
   selectedIds,
   isCheckAll,
+  constants,
   handlePage,
   handleToggleStatus,
   handleDetailClick,
@@ -16,12 +17,23 @@ function ItemTable({
   handleCheckAllClick,
   handleCheckBoxClick,
 }) {
-  const typeLabels = {
-    furniture: { label: 'Nội thất', style: styles.typeFurniture },
-    decoration: { label: 'Trang trí', style: styles.typeDecoration },
-    food: { label: 'Thức ăn', style: styles.typeFood },
-    toy: { label: 'Đồ chơi', style: styles.typeToy },
-  };
+  const typeLabels = {};
+  constants?.types?.forEach((type) => {
+    switch(type) {
+      case 'furniture': 
+        typeLabels.furniture = { label: 'Nội thất', style: styles.typeFurniture };
+        break;
+      case 'decoration':
+        typeLabels.decoration = { label: 'Trang trí', style: styles.typeDecoration };
+        break;
+      case 'food': 
+        typeLabels.food = { label: 'Thức ăn', style: styles.typeFood };
+        break;
+      case 'toy':
+        typeLabels.toy = { label: 'Đồ chơi', style: styles.typeToy };
+        break;
+    }
+  });
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN', {

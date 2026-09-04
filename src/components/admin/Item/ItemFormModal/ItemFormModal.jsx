@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import { useDropzone } from 'react-dropzone';
 import ItemCanvasEditor from '../ItemCanvasEditor/ItemCanvasEditor';
 
-function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
+function ItemFormModal({ constants, isOpen, onClose, initialData, onSuccess }) {
   const [formData, setFormData] = useState({
     name: '',
     type: 'furniture',
@@ -60,16 +60,16 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
     }
   }, [initialData, isOpen]);
 
-  // ===== Validate PNG + Alpha =====
+  // validation
   const validatePngAlpha = useCallback((file) => {
     return new Promise((resolve, reject) => {
-      // 1) Kiểm tra MIME type
+      // Chỉ chấp nhận file png
       if (file.type !== 'image/png') {
         reject(new Error('Chỉ chấp nhận file PNG! Vui lòng chọn file .png'));
         return;
       }
 
-      // 2) Kiểm tra có alpha channel (kênh trong suốt) không
+      // kiểm tra trong suốt
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -78,12 +78,17 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
+        // lấy ra 1 mảng chứa hàng nghìn pixel
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
 
         let hasTransparency = false;
+        // Cứ 4 phần tử liên tiếp đại diện cho 1 pixel theo thứ tự: [Red, Green, Blue, Alpha]
+        // i=3 là giá trị alpha của pixel đầu tiên
+        // giá trị đi từ 0 (trong suốt hoàn toàn) tới 255 (đặc kín)
         for (let i = 3; i < data.length; i += 4) {
-          if (data[i] < 250) {
+          // nếu alpha < 250 => có pha chút trong suốt => thỏa mản
+          if (data[i] < 250) {  
             hasTransparency = true;
             break;
           }
@@ -92,16 +97,19 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
         if (!hasTransparency) {
           reject(
             new Error(
-              'File PNG không có kênh Alpha (trong suốt)! Vui lòng sử dụng ảnh PNG có nền trong suốt.',
+              'File PNG không có kênh Alpha! Vui lòng sử dụng ảnh PNG có nền trong suốt.',
             ),
           );
           return;
         }
 
+        // báo tín hiệu thành công
         resolve(img);
+        // dọn dẹp rác
         URL.revokeObjectURL(img.src);
       };
 
+      // khi không thể bắt được sự kiện onLoad (do file không phải ảnh) thì nó chạy vào đây
       img.onerror = () => {
         reject(new Error('Không thể đọc file ảnh.'));
       };
@@ -110,7 +118,7 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
     });
   }, []);
 
-  // ===== Dropzone config (chỉ PNG) =====
+  // cấu hình drop zone
   const dropzone = useDropzone({
     accept: { 'image/png': ['.png'] },
     maxSize: 10 * 1024 * 1024, // 10MB cho ảnh PNG chất lượng cao
@@ -135,7 +143,7 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
     },
   });
 
-  // ===== Nhận file đã căn chỉnh từ Canvas Editor =====
+  // Nhận file đã căn chỉnh từ Canvas Editor
   const handleCanvasConfirm = (croppedFile, croppedPreviewUrl) => {
     setPreviewUrl(croppedPreviewUrl);
     setImageFile(croppedFile);
@@ -182,14 +190,7 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || 'Có lỗi xảy ra khi lưu vật phẩm');
     }
-  };
-
-  const typeOptions = [
-    { value: 'furniture', label: '🛏️ Nội thất' },
-    { value: 'decoration', label: '🎨 Trang trí' },
-    { value: 'food', label: '🦴 Thức ăn' },
-    { value: 'toy', label: '🎾 Đồ chơi' },
-  ];
+  };  
 
   return (
     <div className={styles.modalOverlay}>
@@ -242,7 +243,7 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
             <div className={styles.formGroup}>
               <label>Loại vật phẩm *</label>
               <div className={styles.typeSwitchGroup}>
-                {typeOptions.map((opt) => (
+                {constants?.types?.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
@@ -257,14 +258,20 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
 
             <div className={styles.formGroup}>
               <label>Danh mục (Category) *</label>
-              <input
-                type="text"
-                name="category"
+              <select
+                name='category'
                 value={formData.category}
                 onChange={handleChange}
-                placeholder="VD: Phụ kiện phòng ngủ, Đồ chơi cắn ngứa răng..."
+                className={styles.selectInput}
                 required
-              />
+              >
+                <option value=''>-- Chọn danh mục --</option>
+                {constants?.categories?.[formData.type]?.map((item, index) => {
+                  return (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  )
+                })}
+              </select>
             </div>
 
             <div className={styles.formRowGroup}>
@@ -295,7 +302,7 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
                     className={`${styles.statusBtn} ${formData.status === 'inactive' ? styles.activeInactive : ''}`}
                     onClick={() => setFormData((prev) => ({ ...prev, status: 'inactive' }))}
                   >
-                    Dừng
+                    Dừng hoạt động
                   </button>
                 </div>
               </div>
@@ -335,14 +342,11 @@ function ItemFormModal({ isOpen, onClose, initialData, onSuccess }) {
                 onChange={handleChange}
                 className={styles.selectInput}
               >
-                <option value="left_floor">Sàn trái (left_floor)</option>
-                <option value="center_floor">Sàn giữa (center_floor)</option>
-                <option value="right_floor">Sàn phải (right_floor)</option>
-                <option value="left_wall">Tường trái (left_wall)</option>
-                <option value="center_wall">Tường giữa (center_wall)</option>
-                <option value="right_wall">Tường phải (right_wall)</option>
-                <option value="ceiling">Trần nhà (ceiling)</option>
-                <option value="other">Vị trí khác (other)</option>
+                {constants?.slotTypes?.map((item) => {
+                  return <option
+                    value={item.value}
+                  >{item.label}</option>
+                })}
               </select>
             </div>
 

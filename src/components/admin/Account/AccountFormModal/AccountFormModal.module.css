@@ -1,24 +1,30 @@
 .modalOverlay {
+  /* cố định vị trí so với màn hình trình duyệt */
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
+  /* tô lên màn hình màu đen có độ trong suốt 45% */
   background: rgba(0, 0, 0, 0.45);
   display: flex;
+  /* căn giữa */
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  /* làm mờ nhẹ bg */
   backdrop-filter: blur(2px);
 }
 
 .modalContainer {
   background: #ffffff;
   width: 700px;
+  max-width: 95vw;
   border-radius: 24px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   display: flex;
+  /* sắp xếp các phần tử theo chiều dọc */
   flex-direction: column;
 }
 
@@ -51,58 +57,72 @@
 }
 
 .modalBodyGrid {
+  /* chia layout */
   display: grid;
+  /* gồm 2 cột: cột 1 200px, phần còn lại là cột 2 */
   grid-template-columns: 200px 1fr;
   gap: 24px;
   padding: 24px;
+  max-height: 70vh;
+  /* tạo thanh scroll nếu không đủ chỗ */
+  overflow-y: auto;
 }
 
 .modalLeftCol {
   display: flex;
+  /* sắp xếp các phần tử theo chiều dọc */
   flex-direction: column;
   align-items: center;
   text-align: center;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .avatarUploadBox {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  background: #f3f4f6;
+  /* xét vị trí so với element cha */
   position: relative;
-  margin-bottom: 12px;
-  overflow: hidden;
-  border: 2px dashed #d1d5db;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 8px auto;
+  cursor: pointer;
 }
 
 .avatarPlaceholderCircle {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
+  background: #f3f4f6;
+  border: 2px dashed #cbd5e1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
 }
 
-.avatarPlaceholderCircle img {
+.previewImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
+.placeholderText {
+  font-size: 12px;
+  color: #6b7280;
+}
+
 .cameraIconBadge {
   position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 12px;
+  bottom: 0;
+  right: 0;
   background: #fff;
   border-radius: 50%;
   padding: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-size: 12px;
 }
 
-.modalLeftCol p {
-  font-size: 13px;
+.uploadText {
+  text-align: center;
+  font-size: 12px;
   color: #6b7280;
   margin: 0;
   line-height: 1.4;
@@ -110,6 +130,7 @@
 
 .modalRightCol {
   display: flex;
+  /* bố trí các phần tử theo chiều dọc */
   flex-direction: column;
   gap: 14px;
 }
@@ -197,7 +218,6 @@
   border-radius: 12px;
   border: none;
   background: #fbcfe8;
-  /* Tone hồng nhẹ đồng bộ với nút Thêm tài khoản ở trang chính */
   color: #be185d;
   font-weight: 600;
   cursor: pointer;
@@ -209,46 +229,78 @@
   color: #fff;
 }
 
-/*  --------- */
-.avatarUploadBox {
-  position: relative;
-  width: 100px;
-  height: 100px;
-  margin: 0 auto 8px auto;
-  cursor: pointer;
-}
-
-.avatarPlaceholderCircle {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: #f3f4f6;
-  border: 2px dashed #cbd5e1;
+/* --- Sub-modal Cắt ảnh (Crop Modal) --- */
+.cropModalOverlay {
+  position: fixed;
+  /* đặt khoảng cách phần tử tới 4 phái đều = 0 */
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden;
+  z-index: 1100;
 }
 
-.previewImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cameraIconBadge {
-  position: absolute;
-  bottom: 0;
-  right: 0;
+.cropModalContent {
   background: #fff;
-  border-radius: 50%;
-  padding: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  font-size: 12px;
+  padding: 24px;
+  border-radius: 16px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
 }
 
-.uploadText {
-  text-align: center;
-  font-size: 12px;
-  color: #6b7280;
+.cropModalContent h3 {
+  margin-top: 0;
+  font-size: 18px;
+  color: #111;
+  margin-bottom: 16px;
+}
+
+.cropContainer {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 55vh;
+}
+
+.zoomControlGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.zoomControlGroup input[type="range"] {
+  flex: 1;
+  accent-color: #f472b6;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btnSave {
+  background: #db2777;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btnSave:hover {
+  background: #be185d;
 }

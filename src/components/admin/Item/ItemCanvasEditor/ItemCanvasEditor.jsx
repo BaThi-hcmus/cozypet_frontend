@@ -156,9 +156,10 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
   // ===== Drag handlers =====
   // hàm này được thực thi ngay khi admin đè chuột trái xuống để bắt đầu di chuyển item
   const handleMouseDown = (e) => {
+    // ngăn chặn hành vi bôi đen
     e.preventDefault();
     setIsDragging(true);  // đánh dấu bắt đầu hành động kéo thả
-    const rect = canvasRef.current.getBoundingClientRect();
+    // const rect = canvasRef.current.getBoundingClientRect();
 
     // lưu trữ toàn bộ mốc khởi điểm
     dragStartRef.current = {

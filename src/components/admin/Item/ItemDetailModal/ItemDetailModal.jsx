@@ -2,26 +2,18 @@ import React from 'react';
 import styles from './ItemDetailModal.module.css';
 import { FaRegEdit } from 'react-icons/fa';
 
-function ItemDetailModal({ isOpen, onClose, data, onEditClick }) {
+function ItemDetailModal({ constants, isOpen, onClose, data, onEditClick }) {
   if (!isOpen || !data) return null;
 
-  const typeLabels = {
-    furniture: '🛏️ Nội thất',
-    decoration: '🎨 Trang trí',
-    food: '🦴 Thức ăn',
-    toy: '🎾 Đồ chơi',
-  };
+  const typeLabels = {};
+  constants?.types?.forEach((type) => {
+    typeLabels[type.value] = type.label;
+  })
 
-  const slotTypeLabels = {
-    left_floor: 'Sàn trái (left_floor)',
-    center_floor: 'Sàn giữa (center_floor)',
-    right_floor: 'Sàn phải (right_floor)',
-    left_wall: 'Tường trái (left_wall)',
-    center_wall: 'Tường giữa (center_wall)',
-    right_wall: 'Tường phải (right_wall)',
-    ceiling: 'Trần nhà (ceiling)',
-    other: 'Vị trí khác (other)',
-  };
+  const slotTypeLabels = {};
+  constants?.slotTypes?.forEach((slot) => {
+    slotTypeLabels[slot.value] = slot.label;
+  })
 
   const formattedPrice = new Intl.NumberFormat('vi-VN', {
     style: 'currency',

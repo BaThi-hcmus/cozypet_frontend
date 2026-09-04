@@ -46,7 +46,9 @@ function sortConfiguredSlotsForDisplay(configuredSlots, typeIndexes, typeOrder =
     // nếu loại không nằm trong danh sách ưu tiên thì bị đẩy xuống cuối
     const typeCmp = (orderA === -1 ? typeOrder.length : orderA)
       - (orderB === -1 ? typeOrder.length : orderB);
+    // nếu khác loại thì sắp xếp theo thứ tự ưu tiên
     if (typeCmp !== 0) return typeCmp;
+    // nếu cùng loại thì sắp xếp theo thứ tự được tạo
     return (typeIndexes[a.id] || 0) - (typeIndexes[b.id] || 0);
   });
 }
@@ -108,7 +110,6 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
     setSelectedSlotId(null);
     setIsSlotFormOpen(false);
     editSnapshotRef.current = null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // lấy dữ liệu các constant để hiển thị ở giao diện cấu hình slot
@@ -164,7 +165,7 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
     };
   }, [imgSrc, isOpen]);
 
-  // vẽ background lên khung canvas
+  // vẽ background lên khung canvas kèm theo slot nếu có
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const img = imageRef.current;
@@ -240,6 +241,8 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 4;
         const { labels: labelMap } = buildSlotTypeLabels(slots);
+        // nếu đã cấu hình rồi thì lấy tên theo slot.id
+        // còn nếu đang cấu hình thì lấy tên có chữ "mới"
         const text = labelMap[slot.id] || (slot.isConfigured ? slot.type : `${slot.type} (mới)`);
         ctx.strokeText(text, slot.x + 10, slot.y + 30);
         ctx.fillText(text, slot.x + 10, slot.y + 30);
@@ -254,18 +257,19 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
     }
   }, [imageLoaded, drawCanvas]);
 
-  // ===== Drag Events =====
+  //Drag Events
   // xử lý sự kiện đặt chuột xuống
   const handleMouseDown = (e) => {
     e.preventDefault();
-    // lấy kích thước thực tế và vị trí hiển thị của thẻ canvas
+    // Lấy kích thước và vị trí của thẻ canvas đang hiển thị trên màn hình
     const rect = canvasRef.current.getBoundingClientRect();
-    // Lấy tọa độ vị trí trỏ chuột thực tế tại thời điểm Admin nhấn chuột trái.
+    // Lấy tọa độ vị trí trỏ chuột thực tế tại thời điểm Admin nhấn chuột trái (tính trên cả màn hình trình duyệt)
     const clickX = e.clientX;
     const clickY = e.clientY;
 
     // Tọa độ trên canvas 1000x1000
     // quy đổi từ tọa độ màn hình thành tọa độ trên khung canvas
+    // scale lên để lấy tọa độ thật của khung 1000x1000
     const canvasClickX = (clickX - rect.left) / SCALE_RATIO;
     const canvasClickY = (clickY - rect.top) / SCALE_RATIO;
 
@@ -274,10 +278,10 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
       // Phase 1: Kéo Background
       setIsDraggingBg(true);
       dragStartRef.current = {
-        // lưu tọa độ đặt chuột xuống
+        // lưu tọa độ đặt chuột xuống(so với viewport)
         x: clickX,
         y: clickY,
-        // lưu tọa độ ban đầu của bg
+        // lưu tọa độ ban đầu của bg (so với khung canvas 1000x1000)
         startX: bgX,
         startY: bgY,
       };
@@ -565,10 +569,12 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalContainer}>
+        {/* header */}
         <div className={styles.modalHeader}>
           <h3>
             <span>🎨</span> Trình thiết kế Phòng (Room Editor)
           </h3>
+          {/* thanh điều khiển header */}
           <div className={styles.headerControls}>
             {isBackgroundLocked && !isSlotFormOpen && (
               <button
@@ -583,10 +589,12 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
           </div>
         </div>
 
+        {/* body gồm 2 cột */}
         <div className={`${styles.editorBody} ${hasTwoColumns ? styles.editorBodyTwoCol : styles.editorBodySingleCol}`}>
           {/* Cột 1: Canvas — 3/4 khi có cột phụ, căn giữa khi chỉ 1 cột */}
           <div className={styles.canvasCol}>
             <div className={styles.canvasColInner}>
+              {/* Vùng thao tác kéo thả và hiển thị bg */}
               <div className={styles.canvasWrapperArea}>
                 <div
                   className={styles.canvasWrapper}
@@ -600,8 +608,10 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                 </div>
               </div>
 
+              {/* Vùng hiển thị khu vực zoom và hướng dẫn */}
               {!isBackgroundLocked ? (
                 <div className={styles.canvasToolsRow}>
+                  {/* thanh zoom */}
                   <div className={styles.zoomControl}>
                     <label>🔍 Thu phóng Nền:</label>
                     <input
@@ -644,11 +654,14 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
             </div>
           </div>
 
-          {/* Cột 2: Form cấu hình slot HOẶC danh sách slot (luân phiên, không hiện cùng lúc) */}
+          {/* Cột 2: Form cấu hình slot hoặc danh sách slot (luân phiên, không hiện cùng lúc) */}
+          {/* dạng form cấu hình */}
           {sidePanelMode === 'form' && selectedSlot && (
             <div className={styles.sideCol}>
+              {/* header của form */}
               <div className={styles.slotFormHeader}>
                 <h4>Cấu hình Slot</h4>
+                {/* các button điều khiển */}
                 <div className={styles.slotFormActions}>
                   <button
                     type="button"
@@ -667,7 +680,9 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                 </div>
               </div>
 
+              {/* body của form */}
               <div className={styles.slotDetailForm}>
+                {/* type */}
                 <div className={styles.formGroup}>
                   <label>Loại vật phẩm (Type) *</label>
                   <select
@@ -684,7 +699,8 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                     ))}
                   </select>
                 </div>
-
+                
+                {/* category */}
                 <div className={styles.formGroup}>
                   <label>Danh mục chi tiết (Category) *</label>
                   <select
@@ -706,6 +722,7 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                   </select>
                 </div>
 
+                {/* slot type */}
                 <div className={styles.formGroup}>
                   <label>Vị trí trong phòng (Slot Type) *</label>
                   <select
@@ -723,7 +740,9 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                   </select>
                 </div>
 
+                {/* thanh zoom và z-index */}
                 <div className={styles.formRow}>
+                  {/* zoom */}
                   <div className={styles.formGroup}>
                     <label>Hệ số thu phóng (Scale)</label>
                     <input
@@ -735,6 +754,8 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                       onChange={(e) => handleUpdateSelectedSlot('scaleFactor', Number(e.target.value))}
                     />
                   </div>
+
+                  {/* z index */}
                   <div className={styles.formGroup}>
                     <label>Thứ tự lớp (zIndex)</label>
                     <input
@@ -746,6 +767,7 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                   </div>
                 </div>
 
+                {/* Tọa độ */}
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
                     <label>Tọa độ X</label>
@@ -769,12 +791,15 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
             </div>
           )}
 
+          {/* dạng list hiển thị danh sách */}
           {sidePanelMode === 'list' && (
             <div className={styles.sideCol}>
+              {/* header */}
               <div className={styles.slotsHeader}>
                 <h4>Slots đã cấu hình ({configuredSlots.length})</h4>
               </div>
 
+              {/* list */}
               <div className={styles.slotsList}>
                 {sortedConfiguredSlots.map((s) => (
                   <div
@@ -801,6 +826,7 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
           )}
         </div>
 
+        {/* footer */}
         <div className={styles.editorFooter}>
           <button type="button" className={styles.btnCancelMain} onClick={onClose}>Hủy</button>
           <button

@@ -1,33 +1,132 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../../../api/api';
+import { useEffect, useRef, useState } from "react";
+import api from "../../../../api/api";
+import { toast } from "react-toastify";
+import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import styles from './AccountFormModal.module.css';
-import { toast } from 'react-toastify';
-import ImageCropModal from '../../../../shared/ImageCropModal/ImageCropModal';
-import { useDropzone } from 'react-dropzone';
-import { useImageCrop } from '../../../../hooks/useImageCrop';
 
-function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
+function AccountFormModal({
+  isOpen,
+  onClose,
+  initialData,
+  onSuccess
+}) {
+  if (!isOpen) return null;
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     fullName: '',
     phoneNumber: '',
-    salary: '',
+    avatar: '',
     role: 'staff',
-    avatar: ''
+    salary: ''
   });
 
-  // Gọi Custom Hook quản lý ảnh
-  const {
-    previewUrl,
-    imageFile,
-    rawImageSrc,
-    isCropModalOpen,
-    setIsCropModalOpen,
-    dropzone,
-    handleCropComplete,
-    resetImage,
-  } = useImageCrop();
+  // image
+  const [imageFile, setImageFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+
+  // liên kết với thẻ input file ở trình duyệt
+  const fileInputRef = useRef(null);
+
+  // state dùng cho cắt ảnh
+  const [rawImageSrc, setRawImageSrc] = useState('');     // Link ảnh gốc đưa vào modal cắt
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [crop, setCrop] = useState(); // Tọa độ khung crop
+  const [completedCrop, setCompletedCrop] = useState(null); // Tọa độ sau khi crop hoàn tất
+  const [scale, setScale] = useState(1); // Thanh trượt zoom ảnh
+  const imgRefFromCanvas = useRef(null);
+
+  // Xử lý upload file ảnh từ file explorer
+  const handleBoxClick = () => {
+    fileInputRef.current.click();
+  }
+
+  const handleFileSelected = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      processFile(file);
+    }
+  }
+
+  const processFile = (file) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn file ảnh');
+      return;
+    }
+
+    const imageUrl = URL.createObjectURL(file);
+    setRawImageSrc(imageUrl);
+    setScale(1); // Reset zoom khi chọn ảnh mới
+    setIsCropModalOpen(true);
+  }
+
+  // Xử lý upload file ảnh bằng cách kéo thả
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      processFile(file);
+    }
+  }
+
+  // Xử lý crop ảnh
+  const handleImageLoad = (e) => {
+    const { width, height } = e.currentTarget;
+    // Tạo khung mặc định ở giữa ảnh
+    setCrop(centerCrop(
+      makeAspectCrop({ unit: '%', width: 90 }, 1, width, height),
+      width,
+      height
+    ));
+  }
+
+  const handleConfirmCrop = () => {
+    if (!completedCrop || !imgRefFromCanvas.current) return;
+
+    const image = imgRefFromCanvas.current;
+    const canvas = document.createElement('canvas');
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+
+    // Kích thước ảnh kết quả sau khi cắt (300x300 pixel chuẩn avatar)
+    canvas.width = 300;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(
+      image,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const croppedFile = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+
+        setImageFile(croppedFile);  // file này được gửi sang backend
+        setPreviewUrl(URL.createObjectURL(blob));  // hiển thị ngoài modal form
+      },
+      'image/jpeg',
+      0.95
+    );
+    // đóng modal
+    setIsCropModalOpen(false);
+  }
 
   useEffect(() => {
     if (initialData) {
@@ -36,86 +135,93 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
         password: '',
         fullName: initialData.fullName || '',
         phoneNumber: initialData.phoneNumber || '',
-        salary: initialData.salary || '',
-        role: initialData.role || 'staff',
         avatar: initialData.avatar || '',
-        avatarFile: null
-      });
-      resetImage(initialData.avatar || ''); // Nạp ảnh cũ vào hook
+        role: initialData.role || 'staff',
+        salary: initialData.salary || ''
+      })
+      setPreviewUrl(initialData.avatar || '');
+      setImageFile(null);
     } else {
       setFormData({
         email: '',
         password: '',
         fullName: '',
         phoneNumber: '',
-        salary: '',
-        role: 'staff',
         avatar: '',
-        avatarFile: null
-      });
-      resetImage(''); // Reset sạch ảnh
+        role: 'staff',
+        salary: ''
+      })
+      setPreviewUrl('');
+      setImageFile(null);
     }
   }, [initialData, isOpen]);
 
-  if (!isOpen) return null;
-
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+    setFormData((prev) => {
+      return {
+        ...prev,
+        [name]: value
+      }
+    })
+  }
 
-  const handleSubmit = async (e) => {
+  const handleSubmitForm = async (e) => {
     e.preventDefault();
     try {
-      // vì có file nên dùng form data thay vì json thuần
-      const formPayload = new FormData();
-      formPayload.append('email', formData.email);
-      formPayload.append('password', formData.password);
-      formPayload.append('role', formData.role);
-      formPayload.append('fullName', formData.fullName);
-      formPayload.append('phoneNumber', formData.phoneNumber);
-      formPayload.append('salary', Number(formData.salary));
-      // Lấy file từ custom hook đính kèm vào payload
+      const dataToSend = new FormData();
+      dataToSend.append('fullName', formData.fullName);
+      dataToSend.append('email', formData.email);
+      dataToSend.append('password', formData.password);
+      dataToSend.append('phoneNumber', formData.phoneNumber);
+      dataToSend.append('role', formData.role);
+      dataToSend.append('salary', formData.salary);
+      
       if (imageFile) {
-        formPayload.append('avatar', imageFile);
+        dataToSend.append('avatar', imageFile);
       }
 
       if (initialData) {
-        await api.patch(`/admin/accounts/update/${initialData._id}`, formPayload, {
+        await api.patch(`/admin/accounts/update/${initialData._id}`, dataToSend, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         });
-        toast.success('Cập nhật tài khoản thành công');
+        toast.success('Cập nhật thành công');
       } else {
-        await api.post('/admin/accounts/create', formPayload, {
+        await api.post(`/admin/accounts/create`, dataToSend, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         });
-        toast.success('Tạo tài khoản thành công');
+        toast.success('Tạo mới thành công');
       }
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.message || 'Có lỗi xảy ra khi lưu tài khoản');
+      toast.error('Có lỗi khi gọi api');
     }
-  };
+  }
 
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalContainer}>
+        {/* Header */}
         <div className={styles.modalHeader}>
-          <h3>{initialData ? 'Cập nhật tài khoản' : 'Thêm tài khoản mới'}</h3>
+          <h3>{!initialData ? 'Thêm tài khoản mới' : 'Cập nhật tài khoản'}</h3>
           <button type="button" onClick={onClose}>×</button>
         </div>
 
-        {/* Form chứa các input và tự động submit khi bấm nút lưu */}
-        <form onSubmit={handleSubmit} id="accountForm" className={styles.modalBodyGrid}>
-          {/* Khu vực Upload Avatar sử dụng react-dropzone */}
+        {/* Form chính chứa các input và tự động submit khi bấm nút lưu */}
+        <form onSubmit={handleSubmitForm} id="accountForm" className={styles.modalBodyGrid}>
+          {/* Cột trái: Upload Avatar */}
           <div className={styles.modalLeftCol}>
-            <div {...dropzone.getRootProps()} className={styles.avatarUploadBox}>
-              <input {...dropzone.getInputProps()} />
+            <div
+              className={styles.avatarUploadBox}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={handleBoxClick}
+            >
               <div className={styles.avatarPlaceholderCircle}>
                 {previewUrl ? (
                   <img src={previewUrl} alt="Avatar" className={styles.previewImg} />
@@ -126,10 +232,30 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
               <div className={styles.cameraIconBadge}>📷</div>
             </div>
             <p className={styles.uploadText}>Kéo thả hoặc bấm vào để chọn ảnh<br />(Tối đa 5MB)</p>
+
+            {/* Thẻ input ẩn */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleFileSelected}
+              accept="image/*"
+            />
           </div>
 
           {/* Cột phải: Các input thông tin */}
           <div className={styles.modalRightCol}>
+            <div className={styles.formGroup}>
+              <label>Họ tên</label>
+              <input
+                type="text"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                placeholder="Nguyễn Văn A"
+              />
+            </div>
+
             <div className={styles.formGroup}>
               <label>Email *</label>
               <input
@@ -147,21 +273,10 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
               <input
                 type="password"
                 name="password"
-                value={formData.password}
+                value={formData.password || ''}
                 onChange={handleChange}
                 placeholder="********"
                 required={!initialData}
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label>Họ tên</label>
-              <input
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                placeholder="Nguyễn Văn A"
               />
             </div>
 
@@ -214,19 +329,66 @@ function AccountFormModal({ isOpen, onClose, initialData, onSuccess }) {
         {/* Chân modal đặt ngoài form nhưng chung container */}
         <div className={styles.modalFooter}>
           <button type="button" className={styles.btnCancel} onClick={onClose}>Hủy</button>
-          <button type="submit" form="accountForm" className={styles.btnSubmit}>Lưu</button>
+          <button type="submit" form="accountForm" className={styles.btnSubmit}>
+            {initialData ? 'Cập nhật' : 'Tạo mới'}
+          </button>
         </div>
 
-        {/* Modal cắt và căn chỉnh ảnh đại diện */}
-        <ImageCropModal
-          isOpen={isCropModalOpen}
-          onClose={() => setIsCropModalOpen(false)}
-          imgSrc={rawImageSrc}
-          onCropComplete={handleCropComplete}
-        />
+        {/* Modal Cắt Ảnh (Hiển thị dạng phụ đè lên khi chọn ảnh) */}
+        {isCropModalOpen && (
+          <div className={styles.cropModalOverlay}>
+            <div className={styles.cropModalContent}>
+              <h3>Căn chỉnh ảnh đại diện</h3>
+
+              {/* Khung crop */}
+              <div className={styles.cropContainer}>
+                <ReactCrop
+                  crop={crop}
+                  onChange={(c) => setCrop(c)}
+                  onComplete={(c) => setCompletedCrop(c)}
+                  aspect={1}
+                  circularCrop={true}
+                >
+                  <img
+                    ref={imgRefFromCanvas}
+                    src={rawImageSrc}
+                    alt="crop"
+                    onLoad={handleImageLoad}
+                    style={{
+                      transform: `scale(${scale})`,
+                      transformOrigin: 'center center',
+                      transition: 'transform 0.05s ease',
+                      maxHeight: '50vh',
+                      display: 'block'
+                    }}
+                  />
+                </ReactCrop>
+              </div>
+
+              {/* Thanh zoom */}
+              <div className={styles.zoomControlGroup}>
+                <label>Thu phóng:</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={scale}
+                  onChange={(e) => setScale(Number(e.target.value))}
+                />
+              </div>
+
+              {/* Thanh điều hướng modal crop */}
+              <div className={styles.modalActions}>
+                <button type="button" className={styles.btnCancel} onClick={() => setIsCropModalOpen(false)}>Hủy</button>
+                <button type="button" className={styles.btnSave} onClick={handleConfirmCrop}>Cắt và sử dụng</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  );
+  )
 }
 
 export default AccountFormModal;

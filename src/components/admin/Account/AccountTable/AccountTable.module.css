@@ -3,13 +3,17 @@
   border-radius: 24px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   padding: 16px;
+  /* giải quyết tràn theo chiều ngang */
+  /* cho phép mobile scroll ngang để xem hết các cột trong table */
   overflow-x: auto;
 }
 
 .accountTableContainer table {
   width: 100%;
+  /* gộp các đường viền lại thành một */
   border-collapse: collapse;
   text-align: left;
+  /* ép dữ liệu nằm trên 1 dòng duy nhất */
   white-space: nowrap;
 }
 
@@ -20,6 +24,7 @@
   padding: 16px 12px;
   border-bottom: 1px solid #f3f4f6;
   text-transform: uppercase;
+  /* khoảng cách giữa các kí tự */
   letter-spacing: 0.5px;
 }
 
@@ -28,10 +33,12 @@
   font-size: 14px;
   color: #1f2937;
   border-bottom: 1px solid #f9fafb;
+  /* dùng căng theo chiều dọc */
   vertical-align: middle;
 }
 
 .accountTableContainer tbody tr {
+  /* tạo độ trễ cho việc thay đổi màu nền, dùng cho hover */
   transition: background 0.2s;
 }
 
@@ -43,6 +50,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
+  /* lắp ảnh vào khung mà không bị méo, vở ảnh */
   object-fit: cover;
   border: 1px solid #e5e7eb;
   transition: transform 0.2s;

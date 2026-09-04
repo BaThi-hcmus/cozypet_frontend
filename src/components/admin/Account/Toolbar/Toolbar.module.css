@@ -42,7 +42,9 @@
 }
 
 .searchBox {
-  flex: 1;
+  /* Tự động phình to ra để chiếm hết không gian trống còn lại */
+  flex: 1;  
+  /* Tránh ô tìm kiếm kéo dài vô tận */
   max-width: 350px;
 }
 
@@ -52,6 +54,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 20px;
   font-size: 14px;
+  /* Tắt vòng sáng mặc định của trình duyệt */
   outline: none;
   background: #f9fafb;
 }
@@ -115,6 +118,7 @@
   transition: all 0.2s;
 }
 
+/* áp dụng khi hover vào button nhưng không có disabled */
 .bulkBtn:hover:not(:disabled) {
   background: #be185d;
 }
