@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { useDropzone } from 'react-dropzone';
 import PetCanvasEditor from '../PetTemplateCanvasEditor/PetTemplateCanvasEditor';
 import PetPartCropperModal from '../PetPartCropperModal/PetPartCropperModal';
+import { PetTemplatePreviewModal } from '../PetTemplatePreviewModal/PetTemplatePreviewModal';
 
 function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -31,6 +32,15 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
   // chứa url ảnh để hiển thị ở modal cropper
   const [processedGeneralImgSrc, setProcessedGeneralImgSrc] = useState('');
 
+  // hoạt ảnh
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const petPreviewData = {
+    type: formData?.species || '',
+    headImg: headPreview || formData.headImg || '',
+    bodyImg: bodyPreview || formData.bodyImg || '',
+    name: formData.name || 'Pet mới'
+  }
+
   // Hook dropzone để bắt sự kiện chọn file từ máy hoặc kéo thả
   const dropzone = useDropzone({
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
@@ -56,6 +66,8 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
         name: initialData.name || '',
       });
       setPreviewUrl(initialData.avatar || '');
+      setHeadPreview(initialData?.headImg || '');
+      setBodyPreview(initialData?.bodyImg || '');
       setImageFile(null);
       setHeadFile(null);
       setBodyFile(null);
@@ -66,6 +78,8 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
         name: '',
       });
       setPreviewUrl('');
+      setBodyPreview('');
+      setHeadPreview('');
       setImageFile(null);
       setHeadFile(null);
       setBodyFile(null);
@@ -85,6 +99,7 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
   const handleCanvasConfirm = (file, newPreviewUrl) => {
     setImageFile(file);
     setPreviewUrl(newPreviewUrl);
+    //chuyển sang cho modal part
     setProcessedGeneralImgSrc(newPreviewUrl);
     setIsCanvasModalOpen(false);
 
@@ -98,7 +113,7 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
     setHeadPreview(headPreview);
     setBodyFile(bodyFile);
     setBodyPreview(bodyPreview);
-    toast.success('Đã tách thành công phần Đầu và Thân cho khung chuyển động!');
+    toast.success('Đã tách thành công phần đầu và thân cho khung chuyển động!');
   };
 
   const handleSubmit = async (e) => {
@@ -121,8 +136,8 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
       }
 
       // Gắn thêm file Đầu và Thân đã cắt vào Payload để backend xử lý Master Rig
-      if (headFile) formPayload.append('head', headFile);
-      if (bodyFile) formPayload.append('body', bodyFile);
+      if (headFile) formPayload.append('headImg', headFile);
+      if (bodyFile) formPayload.append('bodyImg', bodyFile);
 
       if (initialData) {
         await api.patch(`/admin/pet-templates/update/${initialData._id}`, formPayload, {
@@ -182,7 +197,7 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
               <strong>Bắt buộc khi tạo mới</strong> (tối đa 5MB)
             </p>
 
-            {/* PHẦN PREVIEW ĐẦU & THÂN MỚI (TO RÕ, CÂN ĐỐI) */}
+            {/* phần preview đầu và thân */}
             {(headPreview || bodyPreview) && (
               <div className={styles.previewPartsSection}>
                 <div className={styles.previewPartsTitle}>
@@ -204,6 +219,17 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
                 </div>
               </div>
             )}
+
+            {/* preview hoạt ảnh */}
+            {imageFile && <div style={{ margin: '1rem 0' }}>
+              <button
+                type="button"
+                className={styles['btn-preview-trigger']}
+                onClick={() => setIsPreviewOpen(true)}
+              >
+                👀 Xem trước Pet
+              </button>
+            </div>}
           </div>
 
           <div className={styles.modalRightCol}>
@@ -298,6 +324,13 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
           onConfirm={handlePartCropperConfirm}
         />
       </div>
+
+      {/* preview hoạt ảnh */}
+      <PetTemplatePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        petData={petPreviewData}
+      />
     </div>
   );
 }

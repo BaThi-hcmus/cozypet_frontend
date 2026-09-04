@@ -30,7 +30,7 @@ function PetCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isPetFit, setIsPetFit] = useState(true);
 
-  // Load ảnh và thiết lập vị trí MẶC ĐỊNH NẰM CHÍNH GIỮA KHUNG CANVAS
+  // Load ảnh và thiết lập vị trí mặc định
   useEffect(() => {
     if (!isOpen || !imgSrc) return;
 
@@ -71,18 +71,18 @@ function PetCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
 
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-    // 1. Vẽ viền khung 1000x1000
+    // Vẽ viền khung 1000x1000
     ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
     ctx.lineWidth = 15;
     ctx.setLineDash([12, 4]);
     ctx.strokeRect(1, 1, CANVAS_SIZE - 2, CANVAS_SIZE - 2);
     ctx.setLineDash([]);
 
-    // 2. Vẽ đường Guideline tâm (Ngang & Dọc giúp dễ canh giữa pet)
+    // Vẽ đường Guideline tâm (Ngang & Dọc giúp dễ canh giữa pet)
     ctx.strokeStyle = 'rgba(236, 72, 153, 0.3)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([6, 3]);
-    
+    ctx.lineWidth = 3;
+    ctx.setLineDash([]);
+
     // Đường ngang giữa
     ctx.beginPath();
     ctx.moveTo(0, CANVAS_SIZE / 2);
@@ -96,19 +96,19 @@ function PetCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 3. Vẽ Pet Image
+    // Vẽ Pet Image
     const scaledW = img.naturalWidth * zoom;
     const scaledH = img.naturalHeight * zoom;
     ctx.drawImage(img, petX, petY, scaledW, scaledH);
 
-    // 4. Vẽ Bounding box viền xanh bao quanh pet
+    // Vẽ Bounding box viền xanh bao quanh pet
     ctx.strokeStyle = 'rgba(16, 185, 129, 0.8)';
     ctx.lineWidth = 4;
     ctx.setLineDash([4, 2]);
     ctx.strokeRect(petX, petY, scaledW, scaledH);
     ctx.setLineDash([]);
 
-    // 5. Check xem Pet có nằm gọn trong khung không
+    // Check xem Pet có nằm gọn trong khung không
     const fits =
       petX >= -1 &&
       petY >= -1 &&
@@ -123,7 +123,7 @@ function PetCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
     }
   }, [imageLoaded, drawCanvas]);
 
-  // ===== Mouse handlers =====
+  // Mouse handlers
   const handleMouseDown = (e) => {
     e.preventDefault();
     setIsDragging(true);
@@ -161,7 +161,7 @@ function PetCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
     };
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  // ===== Touch handlers (Mobile) =====
+  // Touch handlers (Mobile)
   const handleTouchStart = (e) => {
     const touch = e.touches[0];
     setIsDragging(true);
@@ -189,7 +189,7 @@ function PetCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
     setIsDragging(false);
   }, []);
 
-  // ===== Zoom giữ nguyên tâm =====
+  // Zoom giữ nguyên tâm
   const handleZoomChange = (e) => {
     const img = imageRef.current;
     if (!img) return;
@@ -209,7 +209,7 @@ function PetCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
     setZoom(newZoom);
   };
 
-  // ===== Reset về vị trí chính giữa canvas =====
+  // Reset về vị trí chính giữa canvas
   const handleResetPosition = () => {
     const img = imageRef.current;
     if (!img) return;
@@ -220,7 +220,7 @@ function PetCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
     setPetY((CANVAS_SIZE - scaledH) / 2);
   };
 
-  // ===== Xuất file ảnh PNG 1000x1000 sạch sẽ =====
+  // Xuất file ảnh PNG 1000x1000
   const handleConfirm = () => {
     const img = imageRef.current;
     if (!img) return;
@@ -307,9 +307,8 @@ function PetCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
           {/* Validation Status */}
           {imageLoaded && (
             <div
-              className={`${styles.validationRow} ${
-                isPetFit ? styles.validOk : styles.validError
-              }`}
+              className={`${styles.validationRow} ${isPetFit ? styles.validOk : styles.validError
+                }`}
             >
               {isPetFit
                 ? '✅ Pet nằm gọn trong khung chuẩn. Sẵn sàng lưu!'

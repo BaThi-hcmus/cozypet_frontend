@@ -1,4 +1,84 @@
-/* Hiệu ứng thở nhẹ khi đứng yên */
+/* --- LAYOUT & TAILWIND UTILITY WRAPPERS --- */
+
+.pet-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  user-select: none;
+}
+
+.pet-stage {
+  position: relative;
+  width: 18rem;
+  height: 18rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.pet-body {
+  position: absolute;
+  bottom: 0;
+  width: 12rem;
+  height: 12rem;
+  background-size: cover;
+  background-position: center;
+  transition: transform 300ms ease;
+}
+
+.pet-head {
+  position: absolute;
+  top: 1rem;
+  width: 10rem;
+  height: 10rem;
+  background-size: cover;
+  background-position: center;
+  transform-origin: bottom;
+  transition: all 300ms ease;
+}
+
+.pet-info {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.pet-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.pet-dialogue {
+  font-size: 0.875rem;
+  color: #6b7280;
+  height: 1.5rem;
+}
+
+
+/* --- ANIMATION STATES & CLASSES --- */
+
+.pet-body.is-talking {
+  animation: bounce 1s infinite;
+}
+
+.pet-head.is-breathing {
+  animation: idleBreathing 3s ease-in-out infinite;
+}
+
+.pet-head.is-cat-tilted {
+  animation: catHeadTilt 0.6s ease-in-out;
+}
+
+.pet-head.is-dog-shaken {
+  animation: dogHeadShake 0.6s ease-in-out;
+}
+
+
+/* --- KEYFRAMES --- */
+
 @keyframes idleBreathing {
 
   0%,
@@ -11,7 +91,6 @@
   }
 }
 
-/* Hiệu ứng mèo ngả đầu khi bị click */
 @keyframes catHeadTilt {
   0% {
     transform: rotate(0deg);
@@ -30,7 +109,6 @@
   }
 }
 
-/* Hiệu ứng chó lắc đầu lưỡi lè khi bị click */
 @keyframes dogHeadShake {
   0% {
     transform: rotate(0deg);
@@ -53,14 +131,16 @@
   }
 }
 
-.animate-idle-breathing {
-  animation: idleBreathing 3s ease-in-out infinite;
-}
+@keyframes bounce {
 
-.animate-cat-head-tilt {
-  animation: catHeadTilt 0.6s ease-in-out;
-}
+  0%,
+  100% {
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
 
-.animate-dog-head-shake {
-  animation: dogHeadShake 0.6s ease-in-out;
+  50% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
 }

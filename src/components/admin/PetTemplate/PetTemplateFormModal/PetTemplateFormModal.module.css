@@ -357,8 +357,8 @@
 }
 
 .partPreviewImage {
-  width: 64px;
-  height: 64px;
+  width: 100px;
+  height: 100px;
   object-fit: contain;
   border-radius: 8px;
   background-color: #ffffff;
@@ -371,4 +371,37 @@
   font-size: 11px;
   font-weight: 600;
   color: #475569;
+}
+
+/* --- NÚT KÍCH HOẠT XEM TRƯỚC PET --- */
+/* --- NÚT KÍCH HOẠT XEM TRƯỚC PET --- */
+.btn-preview-trigger {
+  width: 100%;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  border: 1px solid #d1d5db;
+  color: #374151;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.btn-preview-trigger:hover {
+  background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+  color: #111827;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.btn-preview-trigger:active {
+  transform: translateY(0);
+  box-shadow: none;
 }

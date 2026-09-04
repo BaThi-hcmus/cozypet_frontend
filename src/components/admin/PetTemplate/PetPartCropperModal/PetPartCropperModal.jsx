@@ -63,6 +63,7 @@ function PetPartCropperModal({ isOpen, onClose, imgSrc, onConfirm }) {
     }
   };
 
+  // lấy tạo độ đặt chuột (tính theo khung canvas)
   const handleMouseDown = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -81,6 +82,7 @@ function PetPartCropperModal({ isOpen, onClose, imgSrc, onConfirm }) {
     const currentX = e.clientX - rect.left;
     const currentY = e.clientY - rect.top;
 
+    // tính khoảng cách vị trí chuột hiện tại so với vị trí bắt đầu (tính theo khung canvas)
     const width = currentX - startPos.x;
     const height = currentY - startPos.y;
 
@@ -95,9 +97,11 @@ function PetPartCropperModal({ isOpen, onClose, imgSrc, onConfirm }) {
     drawCanvas(newBox);
   };
 
+  // lưu lại các box đã cắt
   const handleMouseUp = () => {
     if (!isDrawing) return;
     setIsDrawing(false);
+    // nếu box quá nhỏ thì không cho cắt
     if (currentBox && currentBox.width > 20 && currentBox.height > 20) {
       if (step === 'head') {
         setHeadBox(currentBox);
@@ -108,7 +112,9 @@ function PetPartCropperModal({ isOpen, onClose, imgSrc, onConfirm }) {
     setCurrentBox(null);
   };
 
+  // khi admin bấm "tiếp tục chọn thân" hoặc "hoàn tấc cắt ảnh"
   const handleNextStep = () => {
+    // tiếp tục chọn thân
     if (step === 'head') {
       if (!headBox) {
         alert('Vui lòng kéo khung bao lấy phần đầu pet!');
@@ -117,6 +123,7 @@ function PetPartCropperModal({ isOpen, onClose, imgSrc, onConfirm }) {
       setStep('body');
       drawCanvas(bodyBox);
     } else {
+      // hoàn tất
       if (!bodyBox) {
         alert('Vui lòng kéo khung bao lấy phần thân pet!');
         return;
@@ -136,6 +143,7 @@ function PetPartCropperModal({ isOpen, onClose, imgSrc, onConfirm }) {
         canvas.height = box.height;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // khung giao diện cố định có kích thước 500x500 px
         const scaleX = img.naturalWidth / 500;
         const scaleY = img.naturalHeight / 500;
 
@@ -159,15 +167,16 @@ function PetPartCropperModal({ isOpen, onClose, imgSrc, onConfirm }) {
       });
     };
 
-    Promise.all([cropPartToBlob(headBox), cropPartToBlob(bodyBox)]).then(([headResult, bodyResult]) => {
-      onConfirm({
-        headFile: headResult.file,
-        headPreview: headResult.previewUrl,
-        bodyFile: bodyResult.file,
-        bodyPreview: bodyResult.previewUrl,
+    Promise.all([cropPartToBlob(headBox), cropPartToBlob(bodyBox)])
+      .then(([headResult, bodyResult]) => {
+        onConfirm({
+          headFile: headResult.file,
+          headPreview: headResult.previewUrl,
+          bodyFile: bodyResult.file,
+          bodyPreview: bodyResult.previewUrl,
+        });
+        onClose();
       });
-      onClose();
-    });
   };
 
   if (!isOpen) return null;
