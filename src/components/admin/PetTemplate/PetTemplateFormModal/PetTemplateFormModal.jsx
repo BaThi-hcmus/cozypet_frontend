@@ -4,8 +4,9 @@ import styles from './PetTemplateFormModal.module.css';
 import { toast } from 'react-toastify';
 import { useDropzone } from 'react-dropzone';
 import PetCanvasEditor from '../PetTemplateCanvasEditor/PetTemplateCanvasEditor';
-import PetPartCropperModal from '../PetPartCropperModal/PetPartCropperModal';
 import { PetTemplatePreviewModal } from '../PetTemplatePreviewModal/PetTemplatePreviewModal';
+import PetPartUploadModal from '../PetPartUploadModal/PetPartUploadModal';
+import PetRigEditorModal from '../PetRigEditorModal/PetRigEditorModal';
 
 function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -20,26 +21,27 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
   const [previewUrl, setPreviewUrl] = useState('');
   const [rawImageSrc, setRawImageSrc] = useState('');
 
-  // State lưu trữ các phần đã cắt riêng biệt (Head & Body)
-  const [headFile, setHeadFile] = useState(null);
-  const [bodyFile, setBodyFile] = useState(null);
-  const [headPreview, setHeadPreview] = useState('');
-  const [bodyPreview, setBodyPreview] = useState('');
+  // Quản lý state cho các bộ phận rời và cấu hình Rigging Layers JSON
+  const [partFiles, setPartFiles] = useState({}); // { head: File, body: File, ... }
+  const [partPreviews, setPartPreviews] = useState({}); // { head: 'url', body: 'url', ... }
+  const [riggingLayersConfig, setRiggingLayersConfig] = useState(null);
+  const [globalZoom, setGlobalZoom] = useState(1);
+  const [globalOffset, setGlobalOffset] = useState({ x: 0, y: 0 });
 
   // Quản lý hiển thị các Modal con
   const [isCanvasModalOpen, setIsCanvasModalOpen] = useState(false);
-  const [isPartCropperOpen, setIsPartCropperOpen] = useState(false);
-  // chứa url ảnh để hiển thị ở modal cropper
-  const [processedGeneralImgSrc, setProcessedGeneralImgSrc] = useState('');
+  const [isPartUploadOpen, setIsPartUploadOpen] = useState(false);
+  const [isRigEditorOpen, setIsRigEditorOpen] = useState(false);
 
   // hoạt ảnh
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const petPreviewData = {
-    type: formData?.species || '',
-    headImg: headPreview || formData.headImg || '',
-    bodyImg: bodyPreview || formData.bodyImg || '',
-    name: formData.name || 'Pet mới'
-  }
+    species: formData?.species || 'cat',
+    name: formData.name || 'Pet mới',
+    layers: riggingLayersConfig || initialData?.layers || {},
+    globalZoom: globalZoom !== 1 ? globalZoom : (initialData?.globalZoom || 1),
+    globalOffset: (globalOffset.x !== 0 || globalOffset.y !== 0) ? globalOffset : (initialData?.globalOffset || { x: 0, y: 0 })
+  };
 
   // Hook dropzone để bắt sự kiện chọn file từ máy hoặc kéo thả
   const dropzone = useDropzone({
@@ -66,11 +68,17 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
         name: initialData.name || '',
       });
       setPreviewUrl(initialData.avatar || '');
-      setHeadPreview(initialData?.headImg || '');
-      setBodyPreview(initialData?.bodyImg || '');
       setImageFile(null);
-      setHeadFile(null);
-      setBodyFile(null);
+      setRiggingLayersConfig(initialData?.layers || null);
+
+      // Nếu có sẵn layers từ DB, nạp preview url vào
+      if (initialData.layers) {
+        const initialPreviews = {};
+        Object.entries(initialData.layers).forEach(([key, val]) => {
+          if (val.url) initialPreviews[key] = val.url;
+        });
+        setPartPreviews(initialPreviews);
+      }
     } else {
       setFormData({
         templateId: '',
@@ -78,11 +86,9 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
         name: '',
       });
       setPreviewUrl('');
-      setBodyPreview('');
-      setHeadPreview('');
       setImageFile(null);
-      setHeadFile(null);
-      setBodyFile(null);
+      setPartPreviews({});
+      setRiggingLayersConfig(null);
     }
     setIsSubmitting(false);
   }, [initialData, isOpen]);
@@ -94,26 +100,32 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Callback nhận file ảnh đã được đóng gói chuẩn 1000x1000 từ PetCanvasEditor
-  // Khi hoàn tất canvas chỉnh sửa tổng thể ➔ Chuyển tiếp sang mở Modal Cắt Đầu/Thân
+  // Callback nhận các file ảnh đã được đóng gói chuẩn 1000x1000 từ PetCanvasEditor
   const handleCanvasConfirm = (file, newPreviewUrl) => {
     setImageFile(file);
     setPreviewUrl(newPreviewUrl);
-    //chuyển sang cho modal part
-    setProcessedGeneralImgSrc(newPreviewUrl);
     setIsCanvasModalOpen(false);
 
-    // Tự động mở ngay modal cắt đầu thân tiếp theo
-    setIsPartCropperOpen(true);
+    // Mở tiếp modal upload các bộ phận chi tiết
+    setIsPartUploadOpen(true);
   };
 
-  // Khi hoàn tất việc cắt đầu và thân từ PetPartCropperModal
-  const handlePartCropperConfirm = ({ headFile, headPreview, bodyFile, bodyPreview }) => {
-    setHeadFile(headFile);
-    setHeadPreview(headPreview);
-    setBodyFile(bodyFile);
-    setBodyPreview(bodyPreview);
-    toast.success('Đã tách thành công phần đầu và thân cho khung chuyển động!');
+  // Sau khi upload đủ các bộ phận rời ở PetPartUploadModal
+  const handlePartUploadConfirm = ({ files, previews }) => {
+    setPartFiles(files);
+    setPartPreviews(previews);
+    toast.success('Đã tải lên các bộ phận thành công! Hãy tiến hành ráp nối.');
+
+    // Mở ngay Visual Rigging Editor để Admin căn chỉnh tọa độ
+    setIsRigEditorOpen(true);
+  };
+
+  // Sau khi Admin hoàn tất kéo thả và bấm lưu cấu hình trong RigEditorModal
+  const handleRigEditorConfirm = ({ layers, globalZoom: z, globalOffset: off }) => {
+    setRiggingLayersConfig(layers);
+    if (z !== undefined) setGlobalZoom(z);
+    if (off !== undefined) setGlobalOffset(off);
+    toast.success('Đã lưu cấu hình Rigging tọa độ các bộ phận!');
   };
 
   const handleSubmit = async (e) => {
@@ -135,9 +147,17 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
         formPayload.append('avatar', imageFile);
       }
 
-      // Gắn thêm file Đầu và Thân đã cắt vào Payload để backend xử lý Master Rig
-      if (headFile) formPayload.append('headImg', headFile);
-      if (bodyFile) formPayload.append('bodyImg', bodyFile);
+      // Đính kèm các file bộ phận nếu có thay đổi mới
+      Object.keys(partFiles).forEach((key) => {
+        if (partFiles[key]) {
+          formPayload.append(`${key}`, partFiles[key]);
+        }
+      });
+
+      // Đính kèm chuỗi JSON cấu hình tọa độ layers vào payload
+      if (riggingLayersConfig) {
+        formPayload.append('layers', JSON.stringify(riggingLayersConfig));
+      }
 
       if (initialData) {
         await api.patch(`/admin/pet-templates/update/${initialData._id}`, formPayload, {
@@ -197,31 +217,30 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
               <strong>Bắt buộc khi tạo mới</strong> (tối đa 5MB)
             </p>
 
-            {/* phần preview đầu và thân */}
-            {(headPreview || bodyPreview) && (
-              <div className={styles.previewPartsSection}>
-                <div className={styles.previewPartsTitle}>
-                  <span>🧩 Phân vùng đã cắt:</span>
-                </div>
-                <div className={styles.previewPartsWrapper}>
-                  {headPreview && (
-                    <div className={styles.partPreviewCard}>
-                      <img src={headPreview} alt="Đầu pet" className={styles.partPreviewImage} />
-                      <span className={styles.partPreviewLabel}>Phần Đầu</span>
-                    </div>
-                  )}
-                  {bodyPreview && (
-                    <div className={styles.partPreviewCard}>
-                      <img src={bodyPreview} alt="Thân pet" className={styles.partPreviewImage} />
-                      <span className={styles.partPreviewLabel}>Phần Thân</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Nút mở lại bảng upload/ráp nối thủ công nếu cần */}
+            <div style={{ marginTop: '1rem', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={styles['btn-preview-trigger']}
+                onClick={() => setIsPartUploadOpen(true)}
+              >
+                🧩 Quản lý / Tải bộ phận
+              </button>
+
+              {Object.keys(partPreviews).length > 0 && (
+                <button
+                  type="button"
+                  className={styles['btn-preview-trigger']}
+                  style={{ background: '#059669' }}
+                  onClick={() => setIsRigEditorOpen(true)}
+                >
+                  📐 Mở Ráp nối (Rig Editor)
+                </button>
+              )}
+            </div>
 
             {/* preview hoạt ảnh */}
-            {imageFile && <div style={{ margin: '1rem 0' }}>
+            {(riggingLayersConfig || Object.keys(partPreviews).length > 0) && <div style={{ margin: '1rem 0' }}>
               <button
                 type="button"
                 className={styles['btn-preview-trigger']}
@@ -316,12 +335,20 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
           onConfirm={handleCanvasConfirm}
         />
 
-        {/* Modal Cắt khung Đầu và Thân cho Master Rig */}
-        <PetPartCropperModal
-          isOpen={isPartCropperOpen}
-          onClose={() => setIsPartCropperOpen(false)}
-          imgSrc={processedGeneralImgSrc}
-          onConfirm={handlePartCropperConfirm}
+        {/* Modal tải lên các bộ phận rời */}
+        <PetPartUploadModal
+          isOpen={isPartUploadOpen}
+          onClose={() => setIsPartUploadOpen(false)}
+          initialParts={{ files: partFiles, previews: partPreviews }}
+          onConfirm={handlePartUploadConfirm}
+        />
+
+        {/* Modal kéo thả và ráp nối */}
+        <PetRigEditorModal
+          isOpen={isRigEditorOpen}
+          onClose={() => setIsRigEditorOpen(false)}
+          imgSrcs={partPreviews}
+          onConfirm={handleRigEditorConfirm}
         />
       </div>
 

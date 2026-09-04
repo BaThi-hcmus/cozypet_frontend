@@ -6,13 +6,15 @@ import styles from './PetTemplatePreviewModal.module.css';
  * Modal dùng riêng cho Admin để xem trước mẫu Pet trước khi lưu
  * @param isOpen - Trạng thái đóng/mở modal
  * @param onClose - Hàm xử lý khi tắt modal
- * @param petData - Dữ liệu của mẫu pet (type, headImg, bodyImg, name)
+ * @param petData - Dữ liệu của mẫu pet (species/type, name, layers, globalZoom, globalOffset)
  */
 export const PetTemplatePreviewModal = ({ isOpen, onClose, petData }) => {
   // Nếu modal không mở thì không render gì cả
   if (!isOpen) return null;
+  console.log(petData);
 
-  const { type, headImg, bodyImg, name } = petData;
+  const { species, type, name, layers, globalZoom, globalOffset } = petData;
+  const petType = species || type || 'dog';
 
   return (
     // Lớp phủ nền mờ (Overlay) - Bấm ra ngoài là tắt modal
@@ -33,9 +35,10 @@ export const PetTemplatePreviewModal = ({ isOpen, onClose, petData }) => {
         {/* Component pet avatar rig */}
         <div className={styles['admin-modal-body']}>
           <PetAvatarRig
-            type={type}
-            bodyImg={bodyImg}
-            headImg={headImg}
+            type={petType}
+            layers={layers}
+            globalZoom={globalZoom}
+            globalOffset={globalOffset}
             name={name}
           />
         </div>
