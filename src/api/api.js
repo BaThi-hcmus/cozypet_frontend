@@ -3,7 +3,7 @@ import axios from 'axios';
 // Tạo một instance axios với cấu hình chung
 const api = axios.create({
   baseURL: 'http://localhost:3000', // Thay bằng đường dẫn Backend của bạn
-  timeout: 10000, // Thời gian chờ tối đa (10 giây)
+  timeout: 60000, // Tăng lên 60 giây để chờ upload Cloudinary và AI Gemini xử lý
   headers: {
     'Content-Type': 'application/json',
   },

@@ -80,6 +80,7 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
   }, [isOpen, imgSrcs]);
 
   // Vẽ lại Canvas mỗi khi config, ảnh hoặc lựa chọn thay đổi
+  // kiểm tra xem ảnh có vượt ngoài khung canvas không
   useEffect(() => {
     drawCanvas();
     checkBoundaries();
@@ -100,11 +101,17 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
     ctx.fillStyle = '#f8fafc';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // áp dụng các biến đổi toàn cục
+    ctx.save();
+    ctx.translate(globalOffset.x, globalOffset.y); // Dịch chuyển cả con pet khi kéo chuột
+    ctx.scale(globalZoom, globalZoom); // Zoom toàn bộ canvas/con pet
+
     // Sắp xếp các bộ phận theo zIndex để vẽ lớp nào lên trước/sau
     const sortedParts = Object.keys(partsConfig).sort(
       (a, b) => (partsConfig[a].zIndex || 0) - (partsConfig[b].zIndex || 0)
     );
 
+    // vẽ từng bộ phận
     sortedParts.forEach((key) => {
       const img = loadedImages[key];
       const config = partsConfig[key];
@@ -112,36 +119,30 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
 
       ctx.save();
 
-      // Áp dụng biến đổi toàn cục (khi locked & zoom/pan cả con pet)
-      // dịch chuyển gốc tọa độ (0,0) tới vị trí này
-      // giúp toàn con pet di chuyển khi admin di chuột
-      ctx.translate(globalOffset.x, globalOffset.y);
-
       // Dịch chuyển đến vị trí bộ phận + áp dụng zoom global
       const drawX = config.x;
       const drawY = config.y;
-
       ctx.translate(drawX, drawY);
-      // zoom toàn bộ canvas (làm tổng thể cũng thay đổi theo)
-      ctx.scale(globalZoom, globalZoom);
+
       // xoay part (đổi sang đơn vị radian)
       ctx.rotate((config.rotation * Math.PI) / 180);
 
-      // Lấy kích thước gốc của bộ phận và chuẩn hoá
+      // Lấy kích thước gốc của bộ phận và chuẩn hoá, mỗi bộ phận tối đa 800px
       const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
       const w = clamped.w;
       const h = clamped.h;
 
-      // Căn chỉnh tâm vẽ dựa theo transformOrigin mô phỏng
+      // Căn chỉnh tâm vẽ dựa theo transformOrigin mô phỏng (dùng để rotate)
       const { ox, oy } = calcOriginOffset(w, h, config.transformOrigin);
 
+      // vẽ theo rotate và chiều cao/ chiều rộng (đã scale)
       ctx.drawImage(img, -ox, -oy, w * config.scale, h * config.scale);
 
       // Vẽ khung chữ nhật nhận diện (Bounding box) nếu được chọn hoặc đang mở khóa
       if (!isLocked) {
-        ctx.strokeStyle = key === selectedPart ? '#3b82f6' : '#cbd5e1';
-        ctx.lineWidth = key === selectedPart ? 3 : 1.5;
-        ctx.strokeRect(-ox, -oy, w * config.scale, h * config.scale);
+        ctx.strokeStyle = key === selectedPart ? '#3b82f6' : '#cbd5e1'; // màu
+        ctx.lineWidth = key === selectedPart ? 3 : 1.5; // độ đậm của nét vẽ
+        ctx.strokeRect(-ox, -oy, w * config.scale, h * config.scale); // vẽ mép khung chữ nhật (có rotate)
 
         // Vẽ tên bộ phận nhỏ trên đầu khung
         ctx.fillStyle = key === selectedPart ? '#1d4ed8' : '#64748b';
@@ -151,6 +152,7 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
 
       ctx.restore();
     });
+    ctx.restore();
   };
 
   // Kiểm tra tràn viền khung canvas 1000x1000
@@ -163,26 +165,55 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
       const img = loadedImages[key];
       if (!img) return;
 
-      // 1. Tính kích thước thực tế sau khi scale
+      // Tính kích thước thực tế sau khi scale
       const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
       const finalW = clamped.w * config.scale;
       const finalH = clamped.h * config.scale;
 
-      // 2. Tính toán tâm neo (transformOrigin) y hệt như hàm drawCanvas
+      // Lấy khoảng cách từ điểm neo đến các mép của ảnh gốc
       const { ox, oy } = calcOriginOffset(finalW, finalH, config.transformOrigin);
 
-      // 3. Tính tọa độ tuyệt đối của toàn bộ khung chữ nhật chứa bộ phận trên canvas 1000x1000
-      // (Bao gồm cả globalOffset nếu đang dịch chuyển cả con pet)
+      // Tọa độ tuyệt đối của điểm neo trên canvas 1000x1000
       const absX = config.x + globalOffset.x;
       const absY = config.y + globalOffset.y;
 
-      const minX = absX - ox;
-      const maxX = absX - ox + finalW;
-      const minY = absY - oy;
-      const maxY = absY - oy + finalH;
+      // góc của hình chữ nhật tính tương đối so với điểm neo (ox, oy)
+      // Góc trái-trên, phải-trên, trái-dưới, phải-dưới
+      // xét trong hệ qui chiếu tấm ảnh với góc tọa độ (0,0) là điểm neo
+      const localCorners = [
+        { x: -ox, y: -oy },                    // Top-Left
+        { x: -ox + finalW, y: -oy },          // Top-Right
+        { x: -ox, y: -oy + finalH },          // Bottom-Left
+        { x: -ox + finalW, y: -oy + finalH }  // Bottom-Right
+      ];
 
-      // 4. Kiểm tra xem 4 cạnh của part có bị lấn ra ngoài biên [0, 1000] của canvas không
-      // (Ngưỡng canvas là từ 0 đến 1000)
+      // Đổi góc rotation sang Radian
+      const rad = (config.rotation * Math.PI) / 180;
+      // tính cos và sin ứng với rotation hiện tại
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+
+      // Xoay từng góc và dịch chuyển về tọa độ canvas để tìm biên min/max thực tế
+      localCorners.forEach(corner => {
+        // Công thức xoay 2D quanh điểm neo (0,0)
+        const rx = corner.x * cos - corner.y * sin;
+        const ry = corner.x * sin + corner.y * cos;
+
+        // Cộng thêm vị trí tuyệt đối trên canvas
+        const canvasX = absX + rx;
+        const canvasY = absY + ry;
+
+        // lấy bouding box bao quanh 4 góc
+        if (canvasX < minX) minX = canvasX;
+        if (canvasX > maxX) maxX = canvasX;
+        if (canvasY < minY) minY = canvasY;
+        if (canvasY > maxY) maxY = canvasY;
+      });
+
+      // Kiểm tra xem 4 biên thực tế có bị lấn ra ngoài [0, 1000] của canvas không
       const isOutOfBounds = minX < 0 || maxX > 1000 || minY < 0 || maxY > 1000;
 
       if (isOutOfBounds) {
@@ -198,12 +229,63 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
   };
 
   // Kiểm tra sự kiện chuột trên Canvas để kéo thả bộ phận hoặc kéo toàn con pet
+  // const handleMouseDown = (e) => {
+  //   const canvas = canvasRef.current;
+  //   if (!canvas) return;
+  //   // lấy thông tin khung canvas hiển thị trên UI (trong hệ quy chiếu viewport)
+  //   const rect = canvas.getBoundingClientRect();
+
+  //   // Chuyển đổi tọa độ client sang tọa độ canvas 1000x1000
+  //   const scaleX = canvas.width / rect.width;
+  //   const scaleY = canvas.height / rect.height;
+  //   // tọa độ click xét trong hệ quy chiếu pet
+  //   const rawX = (e.clientX - rect.left) * scaleX;
+  //   const rawY = (e.clientY - rect.top) * scaleY;
+
+  //   setIsDragging(true);
+  //   setDragStart({ x: rawX, y: rawY }); // tọa độ trong khung canvas 1000x1000
+
+  //   if (!isLocked) {
+  //     // Khi isLocked = false, hệ thống vẽ có áp dụng globalOffset, 
+  //     // nên tọa độ check click cũng phải quy đổi ngược lại về hệ quy chiếu nội bộ của pet.
+  //     const x = rawX - globalOffset.x;
+  //     const y = rawY - globalOffset.y;
+
+  //     // Tìm xem click vào bộ phận nào (quét từ lớp trên cùng xuống dưới nhờ .reverse())
+  //     const clickedKey = Object.keys(partsConfig).reverse().find((key) => {
+  //       const conf = partsConfig[key];
+  //       const img = loadedImages[key];
+  //       if (!img) return false;
+
+  //       // Tính kích thước sau khi scale (đồng bộ giới hạn MAX_PART_SIZE như hàm vẽ)
+  //       const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
+  //       const finalW = clamped.w * conf.scale;
+  //       const finalH = clamped.h * conf.scale;
+
+  //       // Xác định tâm neo
+  //       const { ox, oy } = calcOriginOffset(finalW, finalH, conf.transformOrigin);
+
+  //       // Xác định bounding box chuẩn xác theo tâm neo đã tính
+  //       const minX = conf.x - ox;
+  //       const maxX = conf.x - ox + finalW;
+  //       const minY = conf.y - oy;
+  //       const maxY = conf.y - oy + finalH;
+
+  //       return x >= minX && x <= maxX && y >= minY && y <= maxY;
+  //     });
+
+  //     if (clickedKey) {
+  //       setSelectedPart(clickedKey);
+  //     }
+  //   }
+  // };
+
+  // lưu tọa độ click chuột và kiểm tra xem có click vào part nào không
   const handleMouseDown = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
 
-    // Chuyển đổi tọa độ client sang tọa độ canvas 1000x1000
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const rawX = (e.clientX - rect.left) * scaleX;
@@ -213,33 +295,93 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
     setDragStart({ x: rawX, y: rawY });
 
     if (!isLocked) {
-      // 💡 QUAN TRỌNG: Khi isLocked = false, hệ thống vẽ có áp dụng globalOffset, 
-      // nên tọa độ check click cũng phải quy đổi ngược lại về hệ quy chiếu nội bộ của pet.
       const x = rawX - globalOffset.x;
       const y = rawY - globalOffset.y;
 
-      // Tìm xem click vào bộ phận nào (quét từ lớp trên cùng xuống dưới nhờ .reverse())
-      const clickedKey = Object.keys(partsConfig).reverse().find((key) => {
+      // Tìm xem click vào bộ phận nào (ưu tiên lớp trên cùng trước)
+      const sortedKeys = Object.keys(partsConfig).sort(
+        (a, b) => (partsConfig[b].zIndex || 0) - (partsConfig[a].zIndex || 0)
+      );
+
+      let clickedKey = null;
+      let hitCanvas = null;
+      let hitCtx = null;
+
+      for (const key of sortedKeys) {
         const conf = partsConfig[key];
         const img = loadedImages[key];
-        if (!img) return false;
+        if (!img) continue;
 
-        // Tính kích thước sau khi scale (đồng bộ giới hạn MAX_PART_SIZE như hàm vẽ)
         const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
         const finalW = clamped.w * conf.scale;
         const finalH = clamped.h * conf.scale;
-
-        // Xác định tâm neo
         const { ox, oy } = calcOriginOffset(finalW, finalH, conf.transformOrigin);
 
-        // Xác định bounding box chuẩn xác theo tâm neo đã tính
-        const minX = conf.x - ox;
-        const maxX = conf.x - ox + finalW;
-        const minY = conf.y - oy;
-        const maxY = conf.y - oy + finalH;
+        // --- BƯỚC 1: TÍNH TOÁN HIT TEST BOUNDING BOX (nhanh & an toàn) ---
+        const absX = conf.x;
+        const absY = conf.y;
 
-        return x >= minX && x <= maxX && y >= minY && y <= maxY;
-      });
+        const localCorners = [
+          { x: -ox, y: -oy },
+          { x: -ox + finalW, y: -oy },
+          { x: -ox, y: -oy + finalH },
+          { x: -ox + finalW, y: -oy + finalH }
+        ];
+
+        const rad = (conf.rotation * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+
+        localCorners.forEach(corner => {
+          const rx = corner.x * cos - corner.y * sin;
+          const ry = corner.x * sin + corner.y * cos;
+          const cornerX = absX + rx;
+          const cornerY = absY + ry;
+          if (cornerX < minX) minX = cornerX;
+          if (cornerX > maxX) maxX = cornerX;
+          if (cornerY < minY) minY = cornerY;
+          if (cornerY > maxY) maxY = cornerY;
+        });
+
+        const inBox = x >= minX && x <= maxX && y >= minY && y <= maxY;
+        if (!inBox) continue; // Bỏ qua ngay nếu không nằm trong Box
+
+        // --- BƯỚC 2: PIXEL-PERFECT TEST (chính xác) ---
+        if (!hitCanvas) {
+          hitCanvas = document.createElement('canvas');
+          hitCanvas.width = canvas.width;
+          hitCanvas.height = canvas.height;
+          hitCtx = hitCanvas.getContext('2d', { willReadFrequently: true });
+        } else {
+          hitCtx.clearRect(0, 0, hitCanvas.width, hitCanvas.height);
+        }
+
+        hitCtx.save();
+        hitCtx.translate(globalOffset.x, globalOffset.y);
+        hitCtx.translate(conf.x, conf.y);
+        hitCtx.scale(globalZoom, globalZoom);
+        hitCtx.rotate((conf.rotation * Math.PI) / 180);
+
+        hitCtx.drawImage(img, -ox, -oy, clamped.w * conf.scale, clamped.h * conf.scale);
+        hitCtx.restore();
+
+        try {
+          const pixel = hitCtx.getImageData(rawX, rawY, 1, 1).data;
+          // Kiểm tra kênh Alpha (độ mờ), > 10 là click trúng phần nhìn thấy
+          if (pixel[3] > 10) {
+            clickedKey = key;
+            break;
+          }
+        } catch (err) {
+          // Bị lỗi CORS (trình duyệt chặn đọc pixel từ ảnh cross-origin)
+          // -> Chấp nhận luôn hit bằng Bounding Box
+          clickedKey = key;
+          break;
+        }
+      }
 
       if (clickedKey) {
         setSelectedPart(clickedKey);
@@ -295,12 +437,12 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
   };
 
   const handleSave = () => {
-    // 🛠️ Bổ sung thêm url cho từng part dựa trên imgSrcs ban đầu truyền vào
+    // Bổ sung thêm url cho từng part dựa trên imgSrcs ban đầu truyền vào
     const enrichedLayers = {};
     Object.keys(partsConfig).forEach((key) => {
       enrichedLayers[key] = {
         ...partsConfig[key],
-        url: imgSrcs[key] || partsConfig[key].url || '', // Gắn trực tiếp url ảnh vào đây
+        url: imgSrcs[key] || partsConfig[key].url || '', // Gắn trực tiếp url ảnh
       };
     });
 
@@ -332,8 +474,6 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
           </div>
         </div>
 
-        {warningMessage && <div className={styles.warningBanner}>{warningMessage}</div>}
-
         {/* Layout 2 cột: 3/5 và 2/5 */}
         <div className={styles.modalBody}>
           {/* Cột trái (3/5): Canvas Workspace */}
@@ -355,6 +495,7 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
             </div>
 
             <div className={styles.canvasWrapper}>
+              {warningMessage && <div className={styles.warningBanner}>{warningMessage}</div>}
               <canvas
                 ref={canvasRef}
                 onMouseDown={handleMouseDown}

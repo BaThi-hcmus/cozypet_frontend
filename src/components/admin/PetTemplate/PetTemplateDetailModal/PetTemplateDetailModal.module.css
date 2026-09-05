@@ -15,8 +15,15 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .modalContainer {
@@ -76,6 +83,14 @@
   grid-template-columns: 340px 1fr;
   gap: 36px;
   overflow-y: auto;
+}
+
+/* Khối bao bọc cột bên trái: Ảnh + Nút Xem Pet */
+.leftColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 340px;
 }
 
 .imageCardFrame {
@@ -273,9 +288,44 @@
   background: #f1f5f9;
 }
 
+.btn-preview-trigger {
+  width: 100%;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  border: 1px solid #d1d5db;
+  color: #374151;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.btn-preview-trigger:hover {
+  background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+  color: #111827;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.btn-preview-trigger:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
 @media (max-width: 768px) {
   .modalBody {
     grid-template-columns: 1fr;
+  }
+
+  .leftColumn {
+    width: 100%;
   }
 
   .imageCardFrame {

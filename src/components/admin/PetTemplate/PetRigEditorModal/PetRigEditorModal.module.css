@@ -90,12 +90,28 @@
 }
 
 .warningBanner {
-  background: #fef3c7;
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fef3c7ee;
   color: #92400e;
-  padding: 8px 24px;
-  font-size: 0.85rem;
+  padding: 8px 20px;
+  font-size: 0.82rem;
   font-weight: 500;
-  border-bottom: 1px solid #fde68a;
+  border-radius: 8px;
+  border: 1px solid #fde68a;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 10;
+  pointer-events: none;
+  max-width: 90%;
+  text-align: center;
+  animation: warningFadeIn 0.25s ease-out;
+}
+
+@keyframes warningFadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .modalBody {
@@ -137,6 +153,7 @@
   align-items: center;
   overflow: hidden;
   padding: 16px;
+  position: relative;
 }
 
 .rigCanvas {

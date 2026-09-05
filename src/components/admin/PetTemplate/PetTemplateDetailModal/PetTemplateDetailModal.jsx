@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styles from './PetTemplateDetailModal.module.css';
 import { FaRegEdit } from 'react-icons/fa';
+import { PetTemplatePreviewModal } from '../PetTemplatePreviewModal/PetTemplatePreviewModal';
 
 const speciesLabels = {
   dog: '🐶 Chó',
@@ -28,18 +29,28 @@ function formatValue(value) {
 function PetTemplateDetailModal({ isOpen, onClose, data, onEditClick }) {
   if (!isOpen || !data) return null;
 
+  // preview hoạt ảnh
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const petPreviewData = {
+    species: data?.species || 'cat',
+    name: data.name || 'Pet mới',
+    layers: data.layers || {},
+    globalZoom: data.globalZoom || 1,
+    globalOffset: data.globalOffset || { x: 0, y: 0 }
+  };
+
   const traits = data.traits || {};
   const isCat = data.species === 'cat';
   const traitLabels = isCat ? catTraitLabels : dogTraitLabels;
 
   const formattedCreatedAt = data.createdAt
     ? new Date(data.createdAt).toLocaleDateString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
     : '—';
 
   return (
@@ -55,16 +66,30 @@ function PetTemplateDetailModal({ isOpen, onClose, data, onEditClick }) {
         </div>
 
         <div className={styles.modalBody}>
-          <div className={styles.imageCardFrame}>
-            {data.avatar ? (
-              <img src={data.avatar} alt={data.name} className={styles.detailImg} />
-            ) : (
-              <div className={styles.placeholderDetailImage}>
-                <span>🐾</span>
-                <span style={{ fontSize: '13px', fontWeight: 600 }}>Chưa có ảnh</span>
-              </div>
+          {/* Cột bên trái: Ảnh + Nút Xem Pet */}
+          <div className={styles.leftColumn}>
+            <div className={styles.imageCardFrame}>
+              {data.avatar ? (
+                <img src={data.avatar} alt={data.name} className={styles.detailImg} />
+              ) : (
+                <div className={styles.placeholderDetailImage}>
+                  <span>🐾</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600 }}>Chưa có ảnh</span>
+                </div>
+              )}
+              <div className={styles.aiBadge}>✨ Gemini AI</div>
+            </div>
+
+            {/* Nút Xem Pet nằm bên dưới khung ảnh */}
+            {data && (
+              <button
+                type="button"
+                className={styles['btn-preview-trigger']}
+                onClick={() => setIsPreviewOpen(true)}
+              >
+                👀 Xem Pet
+              </button>
             )}
-            <div className={styles.aiBadge}>✨ Gemini AI</div>
           </div>
 
           <div className={styles.infoContent}>
@@ -72,9 +97,8 @@ function PetTemplateDetailModal({ isOpen, onClose, data, onEditClick }) {
 
             <div className={styles.badgesRow}>
               <span
-                className={`${styles.badgeSpecies} ${
-                  data.species === 'dog' ? styles.badgeSpeciesDog : ''
-                }`}
+                className={`${styles.badgeSpecies} ${data.species === 'dog' ? styles.badgeSpeciesDog : ''
+                  }`}
               >
                 {speciesLabels[data.species] || data.species}
               </span>
@@ -150,6 +174,13 @@ function PetTemplateDetailModal({ isOpen, onClose, data, onEditClick }) {
           </button>
         </div>
       </div>
+
+      {/* preview hoạt ảnh */}
+      <PetTemplatePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        petData={petPreviewData}
+      />
     </div>
   );
 }

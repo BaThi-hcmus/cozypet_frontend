@@ -19,6 +19,7 @@ function PetPartUploadModal({ isOpen, onClose, onConfirm, initialParts = {} }) {
 
   if (!isOpen) return null;
 
+  // xử lí khi admin upload 1 part
   const handleFileChange = (partKey, e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -34,6 +35,7 @@ function PetPartUploadModal({ isOpen, onClose, onConfirm, initialParts = {} }) {
     setPartPreviews((prev) => ({ ...prev, [partKey]: previewUrl }));
   };
 
+  // xử lí khi admin bấm button x 1 part
   const handleRemovePart = (partKey) => {
     setPartFiles((prev) => {
       const copy = { ...prev };
@@ -47,6 +49,7 @@ function PetPartUploadModal({ isOpen, onClose, onConfirm, initialParts = {} }) {
     });
   };
 
+  // lưu các part, chỉ có head và body là required, còn lại là optional
   const handleSave = () => {
     // Kiểm tra bắt buộc các phần quan trọng
     if (!partFiles.body && !partPreviews.body) {

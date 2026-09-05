@@ -60,6 +60,7 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
     },
   });
 
+  // tải dữ liệu
   useEffect(() => {
     if (initialData) {
       setFormData({
@@ -142,6 +143,9 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
       formPayload.append('templateId', formData.templateId.trim());
       formPayload.append('species', formData.species);
       formPayload.append('name', formData.name.trim());
+      // 2 trường hỗ trợ vẽ giao diện preview
+      formPayload.append('globalZoom', globalZoom);
+      formPayload.append('globalOffset', globalOffset);
 
       if (imageFile) {
         formPayload.append('avatar', imageFile);

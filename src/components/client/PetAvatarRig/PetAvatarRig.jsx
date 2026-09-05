@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import styles from './PetAvatarRig.module.css';
 import { getPartAnimationOffsets, clampPartSize, calcOriginOffset, MAX_REACTION_DURATION } from '../../../utils/petAnimations';
 
@@ -133,17 +133,92 @@ export const PetAvatarRig = ({ type, layers, globalZoom = 1, globalOffset = { x:
     };
   }, [layers, loadedImages, animationState, globalZoom, globalOffset, type]);
 
-  // 3. Xử lý tương tác Click tổng thể lên Stage
-  const handleStageClick = () => {
+  // 3. Xử lý tương tác Click tổng thể lên Stage (Per-Part Pixel-Perfect Hit Detection)
+  const handleCanvasClick = (e) => {
     // Chỉ nhận click khi đang ở trạng thái nghỉ
     if (animationState !== 'idle') return;
 
-    // Lưu lại thời điểm bắt đầu
+    const canvas = canvasRef.current;
+    if (!canvas || !layers) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    // Tọa độ click trên hệ quy chiếu 1000x1000 của canvas
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
+
+    // Tạo một canvas ảo (offscreen) để test va chạm cho TỪNG BỘ PHẬN
+    const hitCanvas = document.createElement('canvas');
+    hitCanvas.width = canvas.width;
+    hitCanvas.height = canvas.height;
+    const hitCtx = hitCanvas.getContext('2d', { willReadFrequently: true });
+
+    // Sắp xếp các part theo zIndex từ CAO xuống THẤP (bộ phận nằm trên check trước)
+    const sortedKeys = Object.keys(layers).sort(
+      (a, b) => (layers[b].zIndex || 0) - (layers[a].zIndex || 0)
+    );
+
+    let clickedPart = null;
+    const now = Date.now() / 1000;
+
+    for (const key of sortedKeys) {
+      const conf = layers[key];
+      const img = loadedImages[key];
+      if (!img) continue;
+
+      // Xóa canvas ảo để vẽ thử bộ phận này
+      hitCtx.clearRect(0, 0, hitCanvas.width, hitCanvas.height);
+      hitCtx.save();
+
+      // Áp dụng lại ĐÚNG các phép biến đổi như lúc vẽ thật
+      hitCtx.translate(globalOffset.x, globalOffset.y);
+      hitCtx.translate(conf.x, conf.y);
+      hitCtx.scale(globalZoom, globalZoom);
+
+      const baseKey = key.replace(/[0-9]/g, '');
+      const animOffsets = getPartAnimationOffsets(baseKey, 'idle', now, 0, type);
+
+      const currentRotation = (conf.rotation || 0) + animOffsets.rotation;
+      const currentTranslateY = animOffsets.translateY;
+      const scaleMultiplier = animOffsets.scaleMultiplier;
+
+      hitCtx.translate(0, currentTranslateY);
+      hitCtx.rotate((currentRotation * Math.PI) / 180);
+
+      const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
+      const w = clamped.w;
+      const h = clamped.h;
+
+      const finalW = w * (conf.scale || 1) * scaleMultiplier;
+      const finalH = h * (conf.scale || 1) * scaleMultiplier;
+
+      const { ox, oy } = calcOriginOffset(w, h, conf.transformOrigin);
+
+      hitCtx.drawImage(img, -ox, -oy, finalW, finalH);
+      hitCtx.restore();
+
+      try {
+        // Đọc 1 pixel ngay tại vị trí click trên bộ phận này
+        const pixel = hitCtx.getImageData(clickX, clickY, 1, 1).data;
+        if (pixel[3] > 10) {
+          clickedPart = key; // Tìm thấy bộ phận đầu tiên không trong suốt
+          break; // Thoát vòng lặp ngay
+        }
+      } catch (err) {
+        console.warn("Lỗi đọc pixel (CORS)", err);
+      }
+    }
+
+    // Nếu không click trúng part nào (chỉ trúng không khí)
+    if (!clickedPart) return; 
+
+    // Nếu lọt qua được đây tức là đã click trúng thú cưng!
     animStartTimeRef.current = Date.now() / 1000;
 
-    // Phân chia ngẫu nhiên hiệu ứng click (hoặc ưu tiên đầu/thân tùy logic bạn muốn)
-    const isHeadTarget = Math.random() > 0.5;
-    if (isHeadTarget) {
+    // Kích hoạt hoạt ảnh tùy thuộc vào BỘ PHẬN NÀO bị click
+    if (clickedPart.includes('head')) {
       setAnimationState('clicked');
     } else {
       setAnimationState('talking');
@@ -153,8 +228,13 @@ export const PetAvatarRig = ({ type, layers, globalZoom = 1, globalOffset = { x:
   return (
     <div className={styles['pet-container']}>
       {/* Khung chứa Canvas render modular 6+ part */}
-      <div className={styles['pet-stage']} onClick={handleStageClick}>
-        <canvas ref={canvasRef} className={styles['pet-canvas']} />
+      <div className={styles['pet-stage']}>
+        <canvas 
+          ref={canvasRef} 
+          className={styles['pet-canvas']} 
+          onClick={handleCanvasClick}
+          style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+        />
       </div>
 
       {/* --- PHẦN HIỂN THỊ THÔNG TIN & HỘI THOẠI (UI DIALOGUE) --- */}
