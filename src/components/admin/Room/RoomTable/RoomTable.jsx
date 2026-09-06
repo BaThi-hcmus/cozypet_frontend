@@ -61,7 +61,14 @@ function RoomTable({
                       />
                     </td>
                     <td className={styles.codeText}>{room.code}</td>
-                    <td className={styles.nameText}>{room.name}</td>
+                    <td className={styles.nameText}>
+                      {room.name}
+                      {room.isDefault && (
+                        <span style={{ marginLeft: '8px', padding: '2px 8px', background: '#dcfce7', color: '#15803d', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', display: 'inline-block' }}>
+                          ⭐ Mặc định
+                        </span>
+                      )}
+                    </td>
                     <td>
                       <span className={styles.slotCount}>
                         {room.slots?.length || 0} slots

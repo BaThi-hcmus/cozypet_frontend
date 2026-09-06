@@ -10,23 +10,14 @@ const SCALE_RATIO = DISPLAY_SIZE / CANVAS_SIZE;
 const DEFAULT_TYPE_ORDER = ['furniture', 'decoration', 'food', 'toy'];
 
 // Bộ đếm và đặt tên thông minh cho các slot
-// chứa tấc cả các slot hiện tại trong component
-// configuredOnly: chỉ lấy những slot đã được cấu hình hoàn tất
 function buildSlotTypeLabels(slotList, { configuredOnly = true } = {}) {
-  // Chỉ lấy ra những slot mà admin cấu hình xong (tức là bấm nút hoàn tất)
   const source = configuredOnly ? slotList.filter((s) => s.isConfigured) : slotList;
-  // lưu tên hiển thị cuối cùng của từng slot
   const labels = {};
-  // Lưu số thứ tự của riêng từng slot ID đó trong loại của nó.
   const typeIndexes = {};
-  // Biến tạm dùng để đếm xem đến thời điểm hiện tại loại đó đã xuất hiện mấy lần.
   const typeCounts = {};
 
-  // vòng lặp duyệt qua từng slot hợp lệ
   source.forEach((slot) => {
-    // mỗi khi gặp 1 slot của loại nào thì bộ đếm của loại đó tăng lên 1
     typeCounts[slot.type] = (typeCounts[slot.type] || 0) + 1;
-    // Lưu lại con số vừa đếm được gắn với ID của slot đó (dùng để sắp xếp thứ tự hiển thị ở cột bên phải sau này).
     typeIndexes[slot.id] = typeCounts[slot.type];
     labels[slot.id] = `${slot.type} (${typeCounts[slot.type]})`;
   });
@@ -34,85 +25,98 @@ function buildSlotTypeLabels(slotList, { configuredOnly = true } = {}) {
   return { labels, typeIndexes };
 }
 
-// hàm sắp xếp trật tự cho danh sách các slot
-// configuredSlots: mảng các slot đã được cấu hình hoàn chỉnh
-// typeIndexes: Bảng chỉ mục số thứ tự của từng slot (lấy từ kết quả của hàm buildSlotTypeLabels ở trên).
-// typeOrder: Thứ tự ưu tiên của các loại vật phẩm
 function sortConfiguredSlotsForDisplay(configuredSlots, typeIndexes, typeOrder = DEFAULT_TYPE_ORDER) {
   return [...configuredSlots].sort((a, b) => {
-    // xác định thứ tự ưu tiên của slot a và b
     const orderA = typeOrder.indexOf(a.type);
     const orderB = typeOrder.indexOf(b.type);
-    // nếu loại không nằm trong danh sách ưu tiên thì bị đẩy xuống cuối
     const typeCmp = (orderA === -1 ? typeOrder.length : orderA)
       - (orderB === -1 ? typeOrder.length : orderB);
-    // nếu khác loại thì sắp xếp theo thứ tự ưu tiên
     if (typeCmp !== 0) return typeCmp;
-    // nếu cùng loại thì sắp xếp theo thứ tự được tạo
     return (typeIndexes[a.id] || 0) - (typeIndexes[b.id] || 0);
   });
 }
 
-// isOpen: có mở modal hay không
-// isClose: có đóng modal hay không
-// imgSrc: url của background
-// initialSlots: rỗng nếu thêm mới và chứa các slot đã được cấu hình từ trước nếu là update
 function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfirm }) {
-  // tham chiếu trực tiếp đến thẻ canvas
   const canvasRef = useRef(null);
-  // lưu đối tượng File ảnh background
   const imageRef = useRef(null);
-  // báo hiệu ảnh đã load xong chưa
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Phase 1 (Background): căn chỉnh ảnh nền
-  // Tọa độ vị trí đặt góc trên bên trái của ảnh nền trên khung canvas.
+  // Map lưu trữ các HTMLImageElement của vật phẩm mặc định để vẽ lên canvas
+  const itemImagesRef = useRef({});
+
+  // Phase 1 (Background)
   const [bgX, setBgX] = useState(0);
   const [bgY, setBgY] = useState(0);
-  // Tỉ lệ phóng to/thu nhỏ của ảnh nền (mặc định là 1).
   const [bgZoom, setBgZoom] = useState(1);
-  // Cờ kiểm tra xem Admin có đang ở trạng thái đang bấm giữ chuột trái để kéo ảnh nền hay không.
   const [isDraggingBg, setIsDraggingBg] = useState(false);
-
-  // Trạng thái chuyển đổi phase
-  // khi admin bấm khóa nền biến này đổi thành true, khi đó background sẽ được giữ cố định, không thể thay đổi
   const [isBackgroundLocked, setIsBackgroundLocked] = useState(false);
 
   // Phase 2 (Slots)
-  // mảng chứa toàn bộ danh sách các ô slot
   const [slots, setSlots] = useState([]);
-  // Lưu ID của ô slot mà Admin đang chọn (click vào).
   const [selectedSlotId, setSelectedSlotId] = useState(null);
-  // Cờ kiểm tra xem Admin có đang bấm giữ và kéo di chuyển một ô slot trên bản đồ phòng hay không.
   const [isDraggingSlot, setIsDraggingSlot] = useState(false);
-  // Cờ quyết định có bật bảng nhập liệu (Sidebar form) ở cột bên phải để chỉnh sửa chi tiết slot hay không
   const [isSlotFormOpen, setIsSlotFormOpen] = useState(false);
-  // Lưu bộ dữ liệu danh mục lấy từ Backend (ví dụ: các loại type, category hợp lệ).
   const [itemConstants, setItemConstants] = useState(null);
 
-  // lưu tọa độ điểm xuất phát khi bắt đầu kéo chuột (kéo bg hoặc slot)
+  // Item Picker Panel (Cột phụ bên cạnh Canvas khi chọn item mặc định)
+  const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
+  const [compatibleItems, setCompatibleItems] = useState([]);
+  const [loadingCompatibleItems, setLoadingCompatibleItems] = useState(false);
+
   const dragStartRef = useRef({ x: 0, y: 0, startX: 0, startY: 0, targetId: null });
-  // lưu lại 1 bản sao của slot trước khi admin bấm nút sửa, dùng để backup khi cần thiết
   const editSnapshotRef = useRef(null);
 
   // Load init data
   useEffect(() => {
     if (!isOpen) return;
 
-    // Xử lý trường hợp Admin chọn chỉnh sửa một phòng đã được thiết lập từ trước
     if (initialSlots && initialSlots.length > 0) {
       setSlots(initialSlots.map((s) => ({ ...s, isConfigured: true })));
-      setIsBackgroundLocked(true);  // không cho di chuyển background
+      setIsBackgroundLocked(true);
     } else {
       setSlots([]);
       setIsBackgroundLocked(false);
     }
     setSelectedSlotId(null);
     setIsSlotFormOpen(false);
+    setIsItemPickerOpen(false);
     editSnapshotRef.current = null;
-  }, [isOpen]);
+  }, [isOpen, initialSlots]);
 
-  // lấy dữ liệu các constant để hiển thị ở giao diện cấu hình slot
+  // Preload ảnh của các item mặc định ban đầu nếu có
+  useEffect(() => {
+    if (!isOpen || !initialSlots) return;
+
+    initialSlots.forEach(async (slot) => {
+      const defaultItemId = slot.defaultItemId?._id || slot.defaultItemId;
+      if (defaultItemId && !itemImagesRef.current[defaultItemId]) {
+        try {
+          let imageUrl = slot.defaultItem?.image;
+          if (!imageUrl) {
+            const res = await api.get(`/admin/items/detail/${defaultItemId}`);
+            const itemData = res.data?.data;
+            if (itemData) {
+              imageUrl = itemData.image;
+              slot.defaultItem = itemData;
+            }
+          }
+          if (imageUrl) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              itemImagesRef.current[defaultItemId] = img;
+              drawCanvas();
+            };
+            img.src = imageUrl;
+          }
+        } catch (error) {
+          console.error('Không tải được ảnh vật phẩm mặc định:', error);
+        }
+      }
+    });
+  }, [isOpen, initialSlots]);
+
+  // Fetch Item Constants
   useEffect(() => {
     if (!isOpen) return;
 
@@ -130,93 +134,83 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
     fetchItemConstants();
   }, [isOpen]);
 
-  // chuẩn bị khung hình và căn chihr background
+  // Load background image
   useEffect(() => {
     if (!isOpen || !imgSrc) return;
 
     const img = new Image();
-    // khi bg load xong thì chạy vào hàm này 
     img.onload = () => {
       imageRef.current = img;
       setImageLoaded(true);
 
-      // lấy cạnh lớn nhất của img
       const maxDim = Math.max(img.naturalWidth, img.naturalHeight);
-      const defaultZoom = maxDim > CANVAS_SIZE
-        ? CANVAS_SIZE / maxDim
-        : 1;
+      const defaultZoom = maxDim > CANVAS_SIZE ? CANVAS_SIZE / maxDim : 1;
 
-      // thiết lập hệ số zoom để img lọn vào khung canvas
       setBgZoom(defaultZoom);
       const scaledW = img.naturalWidth * defaultZoom;
       const scaledH = img.naturalHeight * defaultZoom;
-      // đặt bg nằm mặc định ở chính giữa khung canvas
       setBgX((CANVAS_SIZE - scaledW) / 2);
       setBgY((CANVAS_SIZE - scaledH) / 2);
     };
-    // xử lý cors nếu load ảnh từ link ngoài (cloudinary)
     img.crossOrigin = 'anonymous';
     img.src = imgSrc;
 
-    // dọn dẹp khi admin đóng modal hoặc đổi bg khác
     return () => {
       imageRef.current = null;
       setImageLoaded(false);
     };
   }, [imgSrc, isOpen]);
 
-  // vẽ background lên khung canvas kèm theo slot nếu có
+  // Draw Canvas
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const img = imageRef.current;
     if (!canvas || !img) return;
-    const ctx = canvas.getContext('2d');  // dùng bút vẽ 2d của canvas
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Xóa nền trước khi vẽ
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-    // Vẽ Background
+    // 1. Draw Background
     const scaledW = img.naturalWidth * bgZoom;
     const scaledH = img.naturalHeight * bgZoom;
     ctx.drawImage(img, bgX, bgY, scaledW, scaledH);
 
-    // Vẽ guide line (Phase 1)
-    // nếu nền chưa được khóa
+    // 2. Draw Guide Line (Phase 1)
     if (!isBackgroundLocked) {
-      ctx.strokeStyle = 'rgba(236, 72, 153, 0.3)';  // màu hồng nhạt, độ trong suốt
-      ctx.lineWidth = 10;  // độ rộng đường
-      ctx.setLineDash([12, 4]); // nét đứt
-      ctx.strokeRect(1, 1, CANVAS_SIZE - 2, CANVAS_SIZE - 2); // kích thước khung
+      ctx.strokeStyle = 'rgba(236, 72, 153, 0.3)';
+      ctx.lineWidth = 10;
+      ctx.setLineDash([12, 4]);
+      ctx.strokeRect(1, 1, CANVAS_SIZE - 2, CANVAS_SIZE - 2);
       ctx.setLineDash([]);
     }
 
-    // Vẽ Slots (Phase 2)
-    // nếu nền đã được khóa thì hệ thống sẽ vẽ các ô slot lên trên
+    // 3. Draw Slots (Phase 2)
     if (isBackgroundLocked) {
-      // Sort theo zIndex để vẽ slot ở dưới trước, trên sau
       const sortedSlots = [...slots].sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
 
       sortedSlots.forEach((slot) => {
-        // tính theo hệ số zoom
         const slotW = CANVAS_SIZE * (slot.scaleFactor || 1);
         const slotH = CANVAS_SIZE * (slot.scaleFactor || 1);
 
-        // Màu sắc phân biệt theo type
-        let color = 'rgba(59, 130, 246, 0.7)'; // Mặc định xanh dương
-        if (slot.type === 'furniture') color = 'rgba(16, 185, 129, 0.7)'; // xanh lá
-        if (slot.type === 'decoration') color = 'rgba(236, 72, 153, 0.7)'; // hồng
-        if (slot.type === 'food') color = 'rgba(245, 158, 11, 0.7)'; // cam
-        if (slot.type === 'toy') color = 'rgba(139, 92, 246, 0.7)'; // tím
+        // Đòn bẩy: Vẽ hình ảnh vật phẩm mặc định lên canvas nếu có
+        const defaultItemId = slot.defaultItemId?._id || slot.defaultItemId;
+        const loadedItemImg = defaultItemId ? itemImagesRef.current[defaultItemId] : null;
+        if (loadedItemImg) {
+          ctx.drawImage(loadedItemImg, slot.x, slot.y, slotW, slotH);
+        }
 
-        // kiểm tra slot có đang được chọn hay không
+        let color = 'rgba(59, 130, 246, 0.7)';
+        if (slot.type === 'furniture') color = 'rgba(16, 185, 129, 0.7)';
+        if (slot.type === 'decoration') color = 'rgba(236, 72, 153, 0.7)';
+        if (slot.type === 'food') color = 'rgba(245, 158, 11, 0.7)';
+        if (slot.type === 'toy') color = 'rgba(139, 92, 246, 0.7)';
+
         const isSelected = slot.id === selectedSlotId;
 
-        // Vẽ mảng mờ bên trong
         ctx.fillStyle = isSelected ? color.replace('0.7', '0.3') : color.replace('0.7', '0.1');
         ctx.fillRect(slot.x, slot.y, slotW, slotH);
 
-        // Vẽ viền
         ctx.strokeStyle = color;
         ctx.lineWidth = isSelected ? 6 : 3;
         if (isSelected) {
@@ -227,22 +221,19 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
         ctx.strokeRect(slot.x, slot.y, slotW, slotH);
         ctx.setLineDash([]);
 
-        // Vẽ tâm (điểm anchor nhỏ)
-        // Vẽ một chấm tròn nhỏ màu trắng ở chính giữa ô slot
+        // Draw center anchor
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.arc(slot.x + slotW / 2, slot.y + slotH / 2, 4, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
 
-        // Vẽ tên Type
+        // Draw Label
         ctx.fillStyle = '#fff';
         ctx.font = '24px Arial';
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 4;
         const { labels: labelMap } = buildSlotTypeLabels(slots);
-        // nếu đã cấu hình rồi thì lấy tên theo slot.id
-        // còn nếu đang cấu hình thì lấy tên có chữ "mới"
         const text = labelMap[slot.id] || (slot.isConfigured ? slot.type : `${slot.type} (mới)`);
         ctx.strokeText(text, slot.x + 10, slot.y + 30);
         ctx.fillText(text, slot.x + 10, slot.y + 30);
@@ -250,52 +241,37 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
     }
   }, [bgX, bgY, bgZoom, isBackgroundLocked, slots, selectedSlotId]);
 
-  // gọi hàm vẽ khi ảnh đã load xong
   useEffect(() => {
     if (imageLoaded) {
       drawCanvas();
     }
   }, [imageLoaded, drawCanvas]);
 
-  //Drag Events
-  // xử lý sự kiện đặt chuột xuống
+  // Mouse Down Event
   const handleMouseDown = (e) => {
     e.preventDefault();
-    // Lấy kích thước và vị trí của thẻ canvas đang hiển thị trên màn hình
     const rect = canvasRef.current.getBoundingClientRect();
-    // Lấy tọa độ vị trí trỏ chuột thực tế tại thời điểm Admin nhấn chuột trái (tính trên cả màn hình trình duyệt)
     const clickX = e.clientX;
     const clickY = e.clientY;
 
-    // Tọa độ trên canvas 1000x1000
-    // quy đổi từ tọa độ màn hình thành tọa độ trên khung canvas
-    // scale lên để lấy tọa độ thật của khung 1000x1000
     const canvasClickX = (clickX - rect.left) / SCALE_RATIO;
     const canvasClickY = (clickY - rect.top) / SCALE_RATIO;
 
-    // nếu còn đang căng chỉnh bg
     if (!isBackgroundLocked) {
-      // Phase 1: Kéo Background
       setIsDraggingBg(true);
       dragStartRef.current = {
-        // lưu tọa độ đặt chuột xuống(so với viewport)
         x: clickX,
         y: clickY,
-        // lưu tọa độ ban đầu của bg (so với khung canvas 1000x1000)
         startX: bgX,
         startY: bgY,
       };
     } else {
-      // Phase 2: Click/Kéo Slot
-      // Tìm xem click vào slot nào (ưu tiên zIndex cao hơn)
       let clickedSlot = null;
       const sortedSlotsDesc = [...slots].sort((a, b) => (b.zIndex || 1) - (a.zIndex || 1));
 
       for (const slot of sortedSlotsDesc) {
-        // tính chiều cao và rộng thực tế của slot
         const slotW = CANVAS_SIZE * (slot.scaleFactor || 1);
         const slotH = CANVAS_SIZE * (slot.scaleFactor || 1);
-        // kiểm tra tọa độ của cú click có nằm trong slot hay không
         if (
           canvasClickX >= slot.x &&
           canvasClickX <= slot.x + slotW &&
@@ -307,52 +283,40 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
         }
       }
 
-      // khi admin bấm trúng 1 ô slot
       if (clickedSlot) {
         setSelectedSlotId(clickedSlot.id);
-        // nếu đây là 1 slot đã được cấu hình trước và bảng nhập liệu bên phải đang đóng
         if (clickedSlot.isConfigured && !isSlotFormOpen) {
-          // tạo 1 bản sao của slot
           editSnapshotRef.current = { ...clickedSlot };
           setIsSlotFormOpen(true);
         }
-        // báo hiệu bắt đầu kéo thả slot
         setIsDraggingSlot(true);
         dragStartRef.current = {
-          // tạo độ đặt chuột
           x: clickX,
           y: clickY,
-          // tọa độ slot
           startX: clickedSlot.x,
           startY: clickedSlot.y,
-          // id của slot đang được chọn
           targetId: clickedSlot.id,
         };
       } else {
-        setSelectedSlotId(null); // click ra ngoài
+        setSelectedSlotId(null);
       }
     }
   };
 
-  // xử lý sự kiện kéo thả 
+  // Mouse Move
   const handleMouseMove = useCallback(
     (e) => {
-      // lấy vị trí chuột hiện tại trừ đi vị trí chuột lúc bắt đầu 
       const dx = (e.clientX - dragStartRef.current.x) / SCALE_RATIO;
       const dy = (e.clientY - dragStartRef.current.y) / SCALE_RATIO;
 
-      // nếu đang kéo bg và bg chưa bị khóa nền
       if (isDraggingBg && !isBackgroundLocked) {
-        // cập nhật tọa độ mới
         setBgX(dragStartRef.current.startX + dx);
         setBgY(dragStartRef.current.startY + dy);
       } else if (isDraggingSlot && isBackgroundLocked && dragStartRef.current.targetId) {
-        // nếu đang kéo slot, bg bi khóa và đúng id của slot đang bị kéo
         const targetId = dragStartRef.current.targetId;
         const newX = dragStartRef.current.startX + dx;
         const newY = dragStartRef.current.startY + dy;
 
-        // cập nhật mảng danh sách của slot(cập nhất vị trí mới)
         setSlots((prev) =>
           prev.map((s) => (s.id === targetId ? { ...s, x: newX, y: newY } : s))
         );
@@ -361,13 +325,11 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
     [isDraggingBg, isBackgroundLocked, isDraggingSlot]
   );
 
-  // khi nhất chuột lên
   const handleMouseUp = useCallback(() => {
     setIsDraggingBg(false);
     setIsDraggingSlot(false);
   }, []);
 
-  // lắng nghe sự kiện trên toàn cửa sổ trình duyệt (phòng trường hợp kéo thả ra bên ngoài thẻ canvas)
   useEffect(() => {
     if (isDraggingBg || isDraggingSlot) {
       window.addEventListener('mousemove', handleMouseMove);
@@ -379,34 +341,26 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
     };
   }, [isDraggingBg, isDraggingSlot, handleMouseMove, handleMouseUp]);
 
-  // ===== Phase 1 Tools =====
-  // điều khiển phóng to thu nhỏ bg
+  // Phase 1 Tools
   const handleBgZoomChange = (e) => {
     const img = imageRef.current;
     if (!img) return;
-    // lấy dữ liệu từ thanh zoom
     const newZoom = parseFloat(e.target.value);
 
-    // tính toán kích thước bg trước và sau khi zoom
     const oldScaledW = img.naturalWidth * bgZoom;
     const oldScaledH = img.naturalHeight * bgZoom;
     const newScaledW = img.naturalWidth * newZoom;
     const newScaledH = img.naturalHeight * newZoom;
 
-    // Xác định tọa độ tâm điểm hiện tại của bức ảnh trên khung canvas trước khi zoom:
     const centerX = bgX + oldScaledW / 2;
     const centerY = bgY + oldScaledH / 2;
 
-    // Cập nhật lại tọa độ góc trái mới (bgX, bgY) dựa trên 
-    // kích thước mới sao cho tâm của ảnh vẫn giữ nguyên vị trí cũ, 
-    // không bị lệch đi đâu cả.
     setBgX(centerX - newScaledW / 2);
     setBgY(centerY - newScaledH / 2);
     setBgZoom(newZoom);
   };
 
-  // ===== Phase 2 Tools =====
-  // xử lý thêm slot
+  // Phase 2 Tools
   const handleAddSlot = () => {
     if (!isBackgroundLocked) return;
 
@@ -419,30 +373,30 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
       slotType: '',
       zIndex: slots.filter((s) => s.isConfigured).length + 1,
       scaleFactor: 0.5,
+      defaultItemId: null,
+      defaultItem: null,
       isConfigured: false,
     };
     setSlots((prev) => {
-      // loại bỏ các slot dang dở, chỉ lấy các slot đã được hoàn tất
       const withoutDraft = prev.filter((s) => s.isConfigured);
       return [...withoutDraft, newSlot];
     });
     setSelectedSlotId(newSlot.id);
     editSnapshotRef.current = null;
     setIsSlotFormOpen(true);
+    setIsItemPickerOpen(false);
   };
 
-  // xử lý cập nhật slot
   const handleEditSlot = (id) => {
     const slot = slots.find((s) => s.id === id);
     if (slot) {
-      // tạo bản sao để backup khi cần thiết
       editSnapshotRef.current = { ...slot };
     }
     setSelectedSlotId(id);
     setIsSlotFormOpen(true);
+    setIsItemPickerOpen(false);
   };
 
-  // nút bấm hoàn tất ở cấu hình slot
   const handleCompleteSlot = () => {
     const slot = slots.find((s) => s.id === selectedSlotId);
     if (!slot?.type || !slot?.category || !slot?.slotType) {
@@ -457,19 +411,17 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
     }
     editSnapshotRef.current = null;
     setIsSlotFormOpen(false);
+    setIsItemPickerOpen(false);
     setSelectedSlotId(null);
   };
 
-  // nút bấm huy ở cấu hình slot
   const handleCancelSlot = () => {
     if (!selectedSlotId) return;
 
     const slot = slots.find((s) => s.id === selectedSlotId);
-    // nếu đây là slot mới tạo mà admin bấm hủy
     if (slot && !slot.isConfigured) {
       setSlots((prev) => prev.filter((s) => s.id !== selectedSlotId));
-    } else if (editSnapshotRef.current) { // trường hợp đây là slot cũ đang sửa nhưng admin bấm hủy
-      // khôi phục thông tin slot cũ
+    } else if (editSnapshotRef.current) {
       setSlots((prev) =>
         prev.map((s) => (s.id === selectedSlotId ? { ...editSnapshotRef.current } : s))
       );
@@ -477,50 +429,112 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
 
     editSnapshotRef.current = null;
     setIsSlotFormOpen(false);
+    setIsItemPickerOpen(false);
     setSelectedSlotId(null);
   };
 
-  // nút delete slot
   const handleDeleteSlot = (id) => {
-    // xóa slot ra khỏi danh sách
     setSlots((prev) => prev.filter((s) => s.id !== id));
     if (selectedSlotId === id) {
       setSelectedSlotId(null);
       setIsSlotFormOpen(false);
+      setIsItemPickerOpen(false);
     }
   };
 
-  // khi admin cập nhật 1 trường trong slot thì gọi hàm này
   const handleUpdateSelectedSlot = (field, value) => {
     if (!selectedSlotId) return;
     setSlots((prev) =>
       prev.map((s) => {
         if (s.id !== selectedSlotId) return s;
-        // khi thay đổi trường type thì tự động cập nhật category về rỗng
         if (field === 'type') {
-          return { ...s, type: value, category: '' };
+          return { ...s, type: value, category: '', defaultItemId: null, defaultItem: null };
         }
-        // cập nhật trường dữ liệu
+        if (field === 'category' || field === 'slotType') {
+          return { ...s, [field]: value, defaultItemId: null, defaultItem: null };
+        }
         return { ...s, [field]: value };
       })
     );
   };
 
-  // ===== Submit =====
-  // lưu lại toàn bộ kết quả khi admin chỉnh xong bg và các slot
+  // Mở Item Picker Panel (Cột phụ 2 trong Cột 1)
+  const handleOpenItemPicker = async () => {
+    const slot = slots.find((s) => s.id === selectedSlotId);
+    if (!slot?.type || !slot?.category || !slot?.slotType) {
+      toast.warning('Vui lòng chọn đầy đủ Type, Category và Slot Type trước khi chọn vật phẩm mặc định');
+      return;
+    }
+
+    setIsItemPickerOpen(true);
+    setLoadingCompatibleItems(true);
+
+    try {
+      const response = await api.get('/admin/items/compatible', {
+        params: {
+          type: slot.type,
+          category: slot.category,
+          slotType: slot.slotType,
+        },
+      });
+      const items = response.data.data || response.data || [];
+      setCompatibleItems(items);
+
+      // Preload ảnh của các item trả về
+      items.forEach((item) => {
+        if (item.image && !itemImagesRef.current[item._id]) {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            itemImagesRef.current[item._id] = img;
+            drawCanvas();
+          };
+          img.src = item.image;
+        }
+      });
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 'Không tải được danh sách vật phẩm phù hợp'
+      );
+    } finally {
+      setLoadingCompatibleItems(false);
+    }
+  };
+
+  // Chọn hoặc bỏ chọn vật phẩm mặc định
+  const handleSelectItemAsDefault = (item) => {
+    if (!selectedSlotId) return;
+
+    if (item) {
+      handleUpdateSelectedSlot('defaultItemId', item._id);
+      handleUpdateSelectedSlot('defaultItem', item);
+
+      if (item.image && !itemImagesRef.current[item._id]) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          itemImagesRef.current[item._id] = img;
+          drawCanvas();
+        };
+        img.src = item.image;
+      }
+    } else {
+      handleUpdateSelectedSlot('defaultItemId', null);
+      handleUpdateSelectedSlot('defaultItem', null);
+    }
+  };
+
+  // Submit
   const handleConfirm = () => {
     const canvas = canvasRef.current;
     const img = imageRef.current;
     if (!canvas || !img) return;
 
-    // Xuất ảnh background đã crop 1000x1000 (không vẽ slot lên ảnh xuất ra!)
-    // tạo thẻ canvas ảo
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = CANVAS_SIZE;
     exportCanvas.height = CANVAS_SIZE;
     const ctx = exportCanvas.getContext('2d');
 
-    // xóa sạch trước khi vẽ
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
     const scaledW = img.naturalWidth * bgZoom;
     const scaledH = img.naturalHeight * bgZoom;
@@ -534,7 +548,7 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
 
         const slotsToSave = slots
           .filter((s) => s.isConfigured)
-          .map(({ isConfigured, ...rest }) => rest);
+          .map(({ isConfigured, defaultItem, ...rest }) => rest);
         onConfirm(file, previewUrl, slotsToSave);
         onClose();
       },
@@ -544,37 +558,29 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
 
   if (!isOpen) return null;
 
-  // tìm kiếm xem có slot nào trùng id với slot đang được chọn không => dùng hiển thị thông tin ở cột bên phải
   const selectedSlot = slots.find((s) => s.id === selectedSlotId);
-  // lọc ra danh sách các ô đã được cấu hình hoàn tất
   const configuredSlots = slots.filter((s) => s.isConfigured);
-  // đếm và gán nhãn tên cho slot
   const { labels: slotDisplayNames, typeIndexes } = buildSlotTypeLabels(slots);
-  // lấy order mặc định hoặc từ server gửi sang
   const typeOrder = itemConstants?.types?.map((t) => t.value) || DEFAULT_TYPE_ORDER;
-  // sắp xếp các slot theo đúng thứ tự ưu tiên
   const sortedConfiguredSlots = sortConfiguredSlotsForDisplay(
     configuredSlots,
     typeIndexes,
     typeOrder
   );
-  // lọc danh sách danh mục con
   const categoryOptions = selectedSlot?.type
     ? itemConstants?.categories?.[selectedSlot.type] || []
     : [];
-  // các biến quyết định bố cục
   const sidePanelMode = isSlotFormOpen ? 'form' : configuredSlots.length > 0 ? 'list' : null;
   const hasTwoColumns = sidePanelMode !== null;
 
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalContainer}>
-        {/* header */}
+        {/* Header */}
         <div className={styles.modalHeader}>
           <h3>
             <span>🎨</span> Trình thiết kế Phòng (Room Editor)
           </h3>
-          {/* thanh điều khiển header */}
           <div className={styles.headerControls}>
             {isBackgroundLocked && !isSlotFormOpen && (
               <button
@@ -589,29 +595,89 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
           </div>
         </div>
 
-        {/* body gồm 2 cột */}
+        {/* Body gồm 2 cột chính */}
         <div className={`${styles.editorBody} ${hasTwoColumns ? styles.editorBodyTwoCol : styles.editorBodySingleCol}`}>
-          {/* Cột 1: Canvas — 3/4 khi có cột phụ, căn giữa khi chỉ 1 cột */}
+          {/* Cột 1: Canvas & Vùng hiển thị Nền */}
           <div className={styles.canvasCol}>
             <div className={styles.canvasColInner}>
-              {/* Vùng thao tác kéo thả và hiển thị bg */}
               <div className={styles.canvasWrapperArea}>
-                <div
-                  className={styles.canvasWrapper}
-                  onMouseDown={handleMouseDown}
-                >
-                  <canvas
-                    ref={canvasRef}
-                    width={CANVAS_SIZE}
-                    height={CANVAS_SIZE}
-                  />
+                {/* Vùng Canvas chính */}
+                <div className={styles.canvasMainArea}>
+                  <div
+                    className={styles.canvasWrapper}
+                    onMouseDown={handleMouseDown}
+                  >
+                    <canvas
+                      ref={canvasRef}
+                      width={CANVAS_SIZE}
+                      height={CANVAS_SIZE}
+                    />
+                  </div>
                 </div>
+
+                {/* Cột phụ trong Cột 1: Danh sách vật phẩm thỏa mãn (Item Picker Panel) */}
+                {isItemPickerOpen && (
+                  <div className={styles.itemPickerPanel}>
+                    <div className={styles.itemPickerHeader}>
+                      <h5>Vật phẩm thỏa mãn</h5>
+                      <button
+                        type="button"
+                        className={styles.btnCloseItemPicker}
+                        onClick={() => setIsItemPickerOpen(false)}
+                        title="Đóng danh sách vật phẩm"
+                      >
+                        ▶
+                      </button>
+                    </div>
+
+                    <div className={styles.itemPickerList}>
+                      <button
+                        type="button"
+                        className={`${styles.itemPickerOption} ${!selectedSlot?.defaultItemId ? styles.itemPickerOptionActive : ''}`}
+                        onClick={() => handleSelectItemAsDefault(null)}
+                      >
+                        ❌ Không dùng vật phẩm mặc định
+                      </button>
+
+                      {loadingCompatibleItems ? (
+                        <div className={styles.itemPickerLoading}>Đang tải vật phẩm...</div>
+                      ) : compatibleItems.length === 0 ? (
+                        <div className={styles.itemPickerEmpty}>
+                          Không có vật phẩm nào phù hợp với bộ lọc (type, category, slotType)
+                        </div>
+                      ) : (
+                        compatibleItems.map((item) => {
+                          const isSelected =
+                            selectedSlot?.defaultItemId === item._id ||
+                            selectedSlot?.defaultItemId?._id === item._id;
+                          return (
+                            <div
+                              key={item._id}
+                              className={`${styles.itemPickerCard} ${isSelected ? styles.itemPickerCardSelected : ''}`}
+                              onClick={() => handleSelectItemAsDefault(item)}
+                            >
+                              {item.image ? (
+                                <img src={item.image} alt={item.name} className={styles.itemPickerImg} />
+                              ) : (
+                                <div className={styles.itemPickerNoImg}>🖼️</div>
+                              )}
+                              <div className={styles.itemPickerCardBody}>
+                                <strong className={styles.itemPickerCardTitle}>{item.name}</strong>
+                                <span className={styles.itemPickerCardSub}>{item.code}</span>
+                              </div>
+                              {isSelected && <span className={styles.itemPickerCheck}>✓</span>}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Vùng hiển thị khu vực zoom và hướng dẫn */}
+              {/* Vùng Zoom & Khóa Nền */}
               {!isBackgroundLocked ? (
                 <div className={styles.canvasToolsRow}>
-                  {/* thanh zoom */}
                   <div className={styles.zoomControl}>
                     <label>🔍 Thu phóng Nền:</label>
                     <input
@@ -654,14 +720,11 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
             </div>
           </div>
 
-          {/* Cột 2: Form cấu hình slot hoặc danh sách slot (luân phiên, không hiện cùng lúc) */}
-          {/* dạng form cấu hình */}
+          {/* Cột 2: Form cấu hình Slot hoặc List Slot */}
           {sidePanelMode === 'form' && selectedSlot && (
             <div className={styles.sideCol}>
-              {/* header của form */}
               <div className={styles.slotFormHeader}>
                 <h4>Cấu hình Slot</h4>
-                {/* các button điều khiển */}
                 <div className={styles.slotFormActions}>
                   <button
                     type="button"
@@ -680,9 +743,8 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                 </div>
               </div>
 
-              {/* body của form */}
               <div className={styles.slotDetailForm}>
-                {/* type */}
+                {/* Type */}
                 <div className={styles.formGroup}>
                   <label>Loại vật phẩm (Type) *</label>
                   <select
@@ -699,8 +761,8 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                     ))}
                   </select>
                 </div>
-                
-                {/* category */}
+
+                {/* Category */}
                 <div className={styles.formGroup}>
                   <label>Danh mục chi tiết (Category) *</label>
                   <select
@@ -710,10 +772,10 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                     disabled={!selectedSlot.type || !itemConstants}
                   >
                     <option value="">-- Chọn danh mục --</option>
-                    {selectedSlot.category
-                      && !categoryOptions.some((opt) => opt.value === selectedSlot.category) && (
-                      <option value={selectedSlot.category}>{selectedSlot.category}</option>
-                    )}
+                    {selectedSlot.category &&
+                      !categoryOptions.some((opt) => opt.value === selectedSlot.category) && (
+                        <option value={selectedSlot.category}>{selectedSlot.category}</option>
+                      )}
                     {categoryOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
@@ -722,7 +784,7 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                   </select>
                 </div>
 
-                {/* slot type */}
+                {/* Slot Type */}
                 <div className={styles.formGroup}>
                   <label>Vị trí trong phòng (Slot Type) *</label>
                   <select
@@ -740,9 +802,56 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                   </select>
                 </div>
 
-                {/* thanh zoom và z-index */}
+                {/* Chọn vật phẩm mặc định tại Slot */}
+                <div className={styles.formGroup}>
+                  <label>Vật phẩm mặc định (Default Item)</label>
+                  {selectedSlot.defaultItem || selectedSlot.defaultItemId ? (
+                    <div className={styles.defaultItemPreviewBox}>
+                      {selectedSlot.defaultItem?.image && (
+                        <img
+                          src={selectedSlot.defaultItem.image}
+                          alt={selectedSlot.defaultItem.name || 'Default Item'}
+                          className={styles.defaultItemThumb}
+                        />
+                      )}
+                      <div className={styles.defaultItemInfo}>
+                        <span className={styles.defaultItemName}>
+                          {selectedSlot.defaultItem?.name || `ID: ${selectedSlot.defaultItemId}`}
+                        </span>
+                        <span className={styles.defaultItemMeta}>
+                          {selectedSlot.defaultItem?.code || ''}
+                        </span>
+                      </div>
+                      <div className={styles.defaultItemBtnGroup}>
+                        <button
+                          type="button"
+                          className={styles.btnChangeDefaultItem}
+                          onClick={handleOpenItemPicker}
+                        >
+                          Đổi
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.btnClearDefaultItem}
+                          onClick={() => handleSelectItemAsDefault(null)}
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.btnSelectDefaultItem}
+                      onClick={handleOpenItemPicker}
+                    >
+                      <span>🎁</span> Chọn vật phẩm mặc định
+                    </button>
+                  )}
+                </div>
+
+                {/* Scale & zIndex */}
                 <div className={styles.formRow}>
-                  {/* zoom */}
                   <div className={styles.formGroup}>
                     <label>Hệ số thu phóng (Scale)</label>
                     <input
@@ -755,7 +864,6 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                     />
                   </div>
 
-                  {/* z index */}
                   <div className={styles.formGroup}>
                     <label>Thứ tự lớp (zIndex)</label>
                     <input
@@ -767,7 +875,7 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                   </div>
                 </div>
 
-                {/* Tọa độ */}
+                {/* Tọa độ X, Y */}
                 <div className={styles.formRow}>
                   <div className={styles.formGroup}>
                     <label>Tọa độ X</label>
@@ -786,20 +894,20 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                     />
                   </div>
                 </div>
-                <p className={styles.hintText}>* Mẹo: Có thể dùng chuột kéo thả khối màu trên Canvas thay vì nhập tay tọa độ.</p>
+                <p className={styles.hintText}>
+                  * Mẹo: Có thể dùng chuột kéo thả khối màu trên Canvas thay vì nhập tay tọa độ.
+                </p>
               </div>
             </div>
           )}
 
-          {/* dạng list hiển thị danh sách */}
+          {/* Dạng list hiển thị danh sách slot */}
           {sidePanelMode === 'list' && (
             <div className={styles.sideCol}>
-              {/* header */}
               <div className={styles.slotsHeader}>
                 <h4>Slots đã cấu hình ({configuredSlots.length})</h4>
               </div>
 
-              {/* list */}
               <div className={styles.slotsList}>
                 {sortedConfiguredSlots.map((s) => (
                   <div
@@ -815,7 +923,10 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
                     <button
                       type="button"
                       className={styles.btnDelSlotMin}
-                      onClick={(e) => { e.stopPropagation(); handleDeleteSlot(s.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSlot(s.id);
+                      }}
                     >
                       ×
                     </button>
@@ -826,7 +937,7 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
           )}
         </div>
 
-        {/* footer */}
+        {/* Footer */}
         <div className={styles.editorFooter}>
           <button type="button" className={styles.btnCancelMain} onClick={onClose}>Hủy</button>
           <button

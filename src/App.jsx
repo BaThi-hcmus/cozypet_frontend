@@ -5,6 +5,7 @@ import AccountManagement from './pages/admin/AccountManagement/AccountManagement
 import ItemManagement from './pages/admin/ItemManagement/ItemManagement';
 import RoomManagement from './pages/admin/RoomManagement/RoomManagement';
 import PetTemplateManagement from './pages/admin/PetTemplateManagement/PetTemplateManagement';
+import PetSetup from './pages/client/PetSetup/PetSetup';
 import { ToastContainer } from 'react-toastify'; // tạo thông báo bên frontend
 import 'react-toastify/dist/ReactToastify.css';
 import 'react-image-crop/dist/ReactCrop.css'; // thư viện cắt ảnh
@@ -14,7 +15,7 @@ function App() {
     <>
       <Routes>
         {/* Chuyển hướng từ trang gốc về admin */}
-        <Route path="/" element={<Navigate to="/admin/accounts" replace />} />
+        <Route path="/" element={<PetSetup />} />
 
         {/* Khung layout chung */}
         <Route path="/admin" element={<AdminLayout />}>

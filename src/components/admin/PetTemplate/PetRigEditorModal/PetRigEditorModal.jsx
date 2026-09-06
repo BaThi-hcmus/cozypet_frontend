@@ -449,7 +449,7 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
     onConfirm({
       layers: enrichedLayers,
       globalZoom,
-      globalOffset,
+      globalOffset
     });
     onClose();
   };

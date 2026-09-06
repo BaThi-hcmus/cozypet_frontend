@@ -11,6 +11,7 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
     name: '',
     description: '',
     status: 'active',
+    isDefault: false,
   });
 
   // Ảnh preview & file gửi server
@@ -31,6 +32,7 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
         name: initialData.name || '',
         description: initialData.description || '',
         status: initialData.status || 'active',
+        isDefault: initialData.isDefault ?? false,
       });
       setPreviewUrl(initialData.backgroundUrl || initialData.background_url || '');
       setSlots(initialData.slots || []);
@@ -42,6 +44,7 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
         name: '',
         description: '',
         status: 'active',
+        isDefault: false,
       });
       setPreviewUrl('');
       setSlots([]);
@@ -99,6 +102,7 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
       formPayload.append('name', formData.name);
       formPayload.append('description', formData.description);
       formPayload.append('status', formData.status);
+      formPayload.append('isDefault', formData.isDefault);
       
       // Chuyển slots thành chuỗi JSON
       formPayload.append('slots', JSON.stringify(slots));
@@ -218,6 +222,26 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
                 placeholder="Mô tả về phòng..."
                 rows="4"
               />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Phòng mặc định</label>
+              <div className={styles.statusSwitchGroup}>
+                <button
+                  type="button"
+                  className={`${styles.statusBtn} ${formData.isDefault ? styles.activeActive : ''}`}
+                  onClick={() => setFormData((prev) => ({ ...prev, isDefault: true }))}
+                >
+                  Mặc định
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.statusBtn} ${!formData.isDefault ? styles.activeInactive : ''}`}
+                  onClick={() => setFormData((prev) => ({ ...prev, isDefault: false }))}
+                >
+                  Không
+                </button>
+              </div>
             </div>
 
             <div className={styles.formGroup}>
