@@ -47,9 +47,7 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
   // Kiểm tra xem bức ảnh do Admin upload đã được trình duyệt tải xong vào bộ nhớ chưa.
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  // Biến kiểm tra logic xem toàn bộ phần hình ảnh của item hiện tại 
-  // có đang nằm hoàn toàn bên trong khung chuẩn $1000 \times 1000$ hay không.
-  const [isItemFit, setIsItemFit] = useState(true);
+
 
   // Load ảnh khi imgSrc thay đổi
   // được gọi khi admin mở modal canvas hoặc upload ảnh mới
@@ -137,13 +135,6 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
     ctx.strokeRect(itemX, itemY, scaledW, scaledH); // Vẽ một khung hình chữ nhật bọc khít lấy item theo đúng tọa độ và kích thước hiện tại
     ctx.setLineDash([]);
 
-    // Kiểm tra item có nằm gọn trong khung không
-    const fits =
-      itemX >= -1 &&  // Kiểm tra mép trái item không vượt quá biên trái quá 1px
-      itemY >= -1 &&  // Kiểm tra mép trên item không vượt quá biên trên quá 1px
-      itemX + scaledW <= CANVAS_SIZE + 1 && // Kiểm tra mép phải item không vượt quá giới hạn 1000px quá 1px
-      itemY + scaledH <= CANVAS_SIZE + 1; // Kiểm tra mép dưới item không vượt quá giới hạn 1000px quá 1px
-    setIsItemFit(fits);
   }, [itemX, itemY, zoom]);
 
   // khi admin kéo thả item hoặc zoom thì hàm này được thực thi => vẽ lại item ra giao diện
@@ -375,15 +366,10 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
             </button>
           </div>
 
-          {/* Validation status */}
+          {/* Status */}
           {imageLoaded && (
-            <div
-              className={`${styles.validationRow} ${isItemFit ? styles.validOk : styles.validError
-                }`}
-            >
-              {isItemFit
-                ? '✅ Item nằm gọn trong khung 1000×1000. Sẵn sàng gửi!'
-                : '⚠️ Item đang tràn ra ngoài khung! Hãy thu nhỏ hoặc kéo vào trong.'}
+            <div className={`${styles.validationRow} ${styles.validOk}`}>
+              ✅ Đã tải ảnh thành công. Bạn có thể tự do kéo thả và thu phóng.
             </div>
           )}
 
@@ -403,7 +389,7 @@ function ItemCanvasEditor({ isOpen, onClose, imgSrc, onConfirm }) {
             type="button"
             className={styles.btnConfirm}
             onClick={handleConfirm}
-            disabled={!imageLoaded || !isItemFit}
+            disabled={!imageLoaded}
           >
             ✓ Xác nhận & Lưu ảnh
           </button>
