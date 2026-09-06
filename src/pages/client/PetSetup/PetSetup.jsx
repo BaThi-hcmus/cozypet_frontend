@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import PetOnboarding from '../../../components/client/PetOnboarding/PetOnboarding';
-import PetSummoning from '../../../components/client/PetSummoning/PetSummoning';
-import PetReveal from '../../../components/client/PetReveal/PetReveal';
+import PetOnboarding from '../../../components/client/Pet/PetOnboarding';
+import PetSummoning from '../../../components/client/Pet/PetSummoning';
+import PetReveal from '../../../components/client/Pet/PetReveal';
 
 export default function PetSetup() {
   const [step, setStep] = useState(1); // 1: Trang tải ảnh, 2: Trang triệu hồi, 3: Reveal

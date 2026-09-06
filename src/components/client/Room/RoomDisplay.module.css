@@ -1,0 +1,405 @@
+/* Page Wrapper */
+.pageWrapper {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fef6f0 0%, #f8e8d6 50%, #f5d6c4 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ambient Background Blobs */
+.ambientBlob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+  animation: float 8s ease-in-out infinite;
+}
+
+.blob1 {
+  width: 400px;
+  height: 400px;
+  background: rgba(243, 141, 104, 0.3);
+  top: -100px;
+  left: -100px;
+  animation-delay: 0s;
+}
+
+.blob2 {
+  width: 350px;
+  height: 350px;
+  background: rgba(255, 184, 108, 0.3);
+  bottom: -80px;
+  right: -80px;
+  animation-delay: 2s;
+}
+
+.blob3 {
+  width: 300px;
+  height: 300px;
+  background: rgba(251, 207, 140, 0.25);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: 4s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.05);
+  }
+}
+
+/* Main Room Container */
+.roomContainer {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 900px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 40px;
+  padding: 40px 36px;
+  box-shadow: 0 24px 64px -16px rgba(184, 120, 92, 0.15), 0 8px 24px rgba(0, 0, 0, 0.04);
+  text-align: center;
+}
+
+/* Header Section */
+.headerSection {
+  margin-bottom: 32px;
+}
+
+.roomBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(243, 141, 104, 0.15);
+  color: #df6f46;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  letter-spacing: 0.3px;
+}
+
+.roomBadge .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.roomTitle {
+  font-size: 36px;
+  font-weight: 700;
+  color: #3d322d;
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.sparkleIcon {
+  font-size: 32px;
+  color: #f5a623;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2) rotate(10deg);
+    opacity: 0.8;
+  }
+}
+
+.roomDescription {
+  font-size: 16px;
+  color: #6b5f59;
+  margin: 0;
+  line-height: 1.6;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Room Canvas Area */
+.roomCanvas {
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.roomBackground {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background-size: cover;
+  background-position: center;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px -8px rgba(184, 120, 92, 0.2);
+  background-color: #f8e8d6;
+}
+
+/* Floating Decorative Elements */
+.floatingElement {
+  position: absolute;
+  font-size: 24px;
+  color: rgba(245, 166, 35, 0.6);
+  animation: gentleFloat 4s ease-in-out infinite;
+}
+
+.star1 {
+  top: 10%;
+  left: 15%;
+  animation-delay: 0s;
+}
+
+.star2 {
+  top: 20%;
+  right: 20%;
+  animation-delay: 1.5s;
+}
+
+.heart1 {
+  bottom: 15%;
+  left: 10%;
+  animation-delay: 3s;
+  color: rgba(223, 111, 70, 0.5);
+}
+
+@keyframes gentleFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(5deg);
+  }
+}
+
+/* Item Slots */
+.itemSlot {
+  position: absolute;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.itemSlot:hover {
+  transform: scale(1.1) !important;
+  z-index: 100 !important;
+}
+
+.itemContainer {
+  position: relative;
+  display: inline-block;
+}
+
+.itemImage {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.itemSlot:hover .itemImage {
+  box-shadow: 0 8px 20px rgba(243, 141, 104, 0.3);
+}
+
+.itemTooltip {
+  position: absolute;
+  bottom: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(61, 50, 45, 0.95);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  text-align: center;
+  min-width: 100px;
+}
+
+.itemSlot:hover .itemTooltip {
+  opacity: 1;
+  visibility: visible;
+  bottom: -60px;
+}
+
+.itemName {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.itemCategory {
+  display: block;
+  font-size: 10px;
+  opacity: 0.8;
+  text-transform: capitalize;
+}
+
+/* Controls Section */
+.controlsSection {
+  margin-bottom: 24px;
+}
+
+.controlsBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(243, 141, 104, 0.1);
+  color: #df6f46;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.controlsBadge .material-symbols-rounded {
+  font-size: 16px;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.interactButton,
+.customizeButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.interactButton {
+  background: linear-gradient(135deg, #f5a623 0%, #ff8c42 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(245, 166, 35, 0.3);
+}
+
+.interactButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(245, 166, 35, 0.4);
+}
+
+.customizeButton {
+  background: rgba(255, 255, 255, 0.9);
+  color: #3d322d;
+  border: 2px solid rgba(243, 141, 104, 0.3);
+}
+
+.customizeButton:hover {
+  background: rgba(243, 141, 104, 0.1);
+  border-color: rgba(243, 141, 104, 0.5);
+}
+
+/* Safe Footer */
+.safeFooter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: rgba(243, 141, 104, 0.08);
+  border-radius: 16px;
+  font-size: 13px;
+  color: #6b5f59;
+  font-weight: 500;
+}
+
+.safeFooter .material-symbols-rounded {
+  font-size: 18px;
+  color: #df6f46;
+}
+
+/* Loading and Error States */
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 16px;
+  padding: 20px;
+}
+
+.loading-sparkle {
+  font-size: 48px;
+  color: #f5a623;
+  animation: sparkle 1.5s ease-in-out infinite;
+}
+
+.loading-container p,
+.error-container p {
+  font-size: 16px;
+  color: #6b5f59;
+  margin: 0;
+}
+
+.error-container {
+  color: #df6f46;
+}
+
+.error-container .material-symbols-rounded {
+  font-size: 48px;
+  color: #df6f46;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .roomContainer {
+    padding: 28px 20px;
+    border-radius: 28px;
+  }
+
+  .roomTitle {
+    font-size: 28px;
+  }
+
+  .roomBackground {
+    aspect-ratio: 4/3;
+  }
+
+  .itemImage {
+    width: 60px;
+    height: 60px;
+  }
+
+  .actionButtons {
+    flex-direction: column;
+  }
+
+  .interactButton,
+  .customizeButton {
+    width: 100%;
+    justify-content: center;
+  }
+}

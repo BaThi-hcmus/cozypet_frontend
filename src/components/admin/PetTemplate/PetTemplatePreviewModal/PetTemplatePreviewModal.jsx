@@ -1,5 +1,5 @@
 import React from 'react';
-import { PetAvatarRig } from '../../../client/PetAvatarRig/PetAvatarRig';
+import { PetAvatarRig } from '../../../client/Pet/PetAvatarRig';
 import styles from './PetTemplatePreviewModal.module.css';
 
 /**

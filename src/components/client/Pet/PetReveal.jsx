@@ -25,7 +25,7 @@ export default function PetReveal({ petTemplate }) {
     localStorage.setItem('data', JSON.stringify(dataToSave));
 
     // Chuyển trang sang Room
-    // navigate('/room'); // Đảm bảo App.jsx có route này hoặc sẽ thêm sau
+    navigate('/room');
   };
 
   return (
