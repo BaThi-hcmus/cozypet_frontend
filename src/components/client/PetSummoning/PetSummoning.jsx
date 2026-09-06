@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './PetSummoning.module.css';
+import api from '../../../api/api';
 
 const statuses = [
   {
@@ -28,13 +29,47 @@ const statuses = [
   }
 ];
 
-export default function PetSummoning({ previewUrl, onSummonComplete }) {
+export default function PetSummoning({ previewUrl, petFile, onSummonComplete }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFading, setIsFading] = useState(false);
+  const [apiResult, setApiResult] = useState(null);
+  const [apiDone, setApiDone] = useState(false);
 
   // Fallback ảnh mẫu nếu chưa có ảnh
   const petImage = previewUrl || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80";
 
+  // Gọi API backend phân tích ảnh
+  useEffect(() => {
+    const fetchReveal = async () => {
+      try {
+        if (petFile) {
+          const formData = new FormData();
+          formData.append('image', petFile);
+          const response = await api.post(`/pet/reveal`, formData);
+          if (response.data) {
+            setApiResult(response.data.data);
+          } else {
+            console.error('API Error:', response.data?.message);
+          }
+        } else {
+          // Bỏ qua Onboarding (chọn ngẫu nhiên 1 template đang active)
+          const response = await fetch('http://localhost:3000/api/admin/pet-templates?status=active');
+          const resJson = await response.json();
+          if (response.ok && resJson.data && resJson.data.length > 0) {
+            const list = resJson.data.filter(t => t.status === 'active' && !t.deleted);
+            setApiResult(list[Math.floor(Math.random() * list.length)]);
+          }
+        }
+      } catch (error) {
+        console.error('Fetch error:', error);
+      } finally {
+        setApiDone(true);
+      }
+    };
+    fetchReveal();
+  }, [petFile]);
+
+  // Vòng lặp animation
   useEffect(() => {
     const interval = setInterval(() => {
       setIsFading(true);
@@ -42,7 +77,6 @@ export default function PetSummoning({ previewUrl, onSummonComplete }) {
         setCurrentIndex((prev) => {
           const nextIndex = prev + 1;
           if (nextIndex >= statuses.length) {
-            if (onSummonComplete) onSummonComplete();
             return prev;
           }
           return nextIndex;
@@ -52,7 +86,16 @@ export default function PetSummoning({ previewUrl, onSummonComplete }) {
     }, 3200);
 
     return () => clearInterval(interval);
-  }, [onSummonComplete]);
+  }, []);
+
+  // Khi cả API hoàn thành VÀ hiệu ứng chạy đến trạng thái cuối cùng thì chuyển bước
+  useEffect(() => {
+    if (apiDone && currentIndex === statuses.length - 1) {
+      if (onSummonComplete) {
+        onSummonComplete(apiResult);
+      }
+    }
+  }, [apiDone, currentIndex, apiResult, onSummonComplete]);
 
   const currentStatus = statuses[currentIndex];
 
