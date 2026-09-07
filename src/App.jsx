@@ -8,6 +8,9 @@ import PetTemplateManagement from './pages/admin/PetTemplateManagement/PetTempla
 import Login from './pages/admin/Login/Login';
 import PetSetup from './pages/client/PetSetup/PetSetup';
 import Room from './pages/client/Room/Room';
+import ClientLayout from './components/client/Layout/ClientLayout';
+import ClientLogin from './pages/client/Login/Login';
+import ClientRegister from './pages/client/Register/Register';
 import { ToastContainer } from 'react-toastify'; // tạo thông báo bên frontend
 import 'react-toastify/dist/ReactToastify.css';
 import 'react-image-crop/dist/ReactCrop.css'; // thư viện cắt ảnh
@@ -16,9 +19,15 @@ function App() {
   return (
     <>
       <Routes>
-        {/* Chuyển hướng từ trang gốc về admin */}
-        <Route path="/" element={<PetSetup />} />
-        <Route path="/room" element={<Room />} />
+        {/* Khung layout chung cho client */}
+        <Route element={<ClientLayout />}>
+          <Route path="/" element={<PetSetup />} />
+          <Route path="/room" element={<Room />} />
+        </Route>
+
+        {/* Auth pages cho client */}
+        <Route path="/login" element={<ClientLogin />} />
+        <Route path="/register" element={<ClientRegister />} />
 
         {/* Login page */}
         <Route path="/admin/login" element={<Login />} />

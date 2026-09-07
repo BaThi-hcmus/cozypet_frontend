@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+import useAuthStore from '../stores/useAuthStore';
+
 // Tạo một instance axios với cấu hình chung
 const api = axios.create({
   baseURL: 'http://localhost:3000', // Thay bằng đường dẫn Backend của bạn
@@ -8,12 +10,13 @@ const api = axios.create({
   withCredentials: true
 });
 
-// (Tùy chọn) Interceptor để tự động gắn Token vào header trước khi gửi request đi
+// Interceptor để tự động gắn Token vào header trước khi gửi request đi
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token'); // Lấy token đăng nhập nếu có
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Lấy token từ Zustand thay vì localStorage
+    const accessToken = useAuthStore.getState().accessToken;
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
   },

@@ -1,0 +1,139 @@
+.client-login-container {
+  min-height: calc(100vh - 80px); /* Trừ đi height của header */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fdf9f3;
+  padding: 20px;
+  background-image: radial-gradient(#ffb5c2 1px, transparent 1px), radial-gradient(#ffb5c2 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: 0 0, 20px 20px;
+  background-attachment: fixed;
+  opacity: 0.9;
+}
+
+.client-login-card {
+  background-color: white;
+  width: 100%;
+  max-width: 440px;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 10px 40px rgba(255, 181, 194, 0.2);
+  border: 2px solid #fff0f2;
+  position: relative;
+  z-index: 1;
+}
+
+.client-login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.client-login-icon {
+  font-size: 48px;
+  color: #ff8fa3;
+  margin-bottom: 10px;
+}
+
+.client-login-header h2 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #1c1c18;
+  font-size: 24px;
+  margin: 0 0 8px 0;
+}
+
+.client-login-header p {
+  color: #666;
+  margin: 0;
+  font-size: 15px;
+}
+
+.client-login-form .form-group {
+  margin-bottom: 20px;
+}
+
+.client-login-form label {
+  display: block;
+  font-weight: 500;
+  color: #444;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-icon .material-symbols-outlined {
+  position: absolute;
+  left: 14px;
+  color: #aaa;
+  font-size: 20px;
+}
+
+.input-with-icon input {
+  width: 100%;
+  padding: 14px 14px 14px 42px;
+  border: 2px solid #f0f0f0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  background-color: #fafafa;
+}
+
+.input-with-icon input:focus {
+  outline: none;
+  border-color: #ffb5c2;
+  background-color: white;
+  box-shadow: 0 0 0 4px rgba(255, 181, 194, 0.1);
+}
+
+.client-btn-submit {
+  width: 100%;
+  background-color: #ff8fa3;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(255, 143, 163, 0.3);
+}
+
+.client-btn-submit:hover:not(:disabled) {
+  background-color: #ff748c;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 143, 163, 0.4);
+}
+
+.client-btn-submit:disabled {
+  background-color: #ffccd4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.client-login-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 15px;
+  color: #666;
+}
+
+.client-login-footer a {
+  color: #ff8fa3;
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.client-login-footer a:hover {
+  text-decoration: underline;
+}
