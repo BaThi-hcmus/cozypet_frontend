@@ -5,6 +5,7 @@ const api = axios.create({
   baseURL: 'http://localhost:3000', // Thay bằng đường dẫn Backend của bạn
   timeout: 60000, // Tăng lên 60 giây để chờ upload Cloudinary và AI Gemini xử lý
   // Không set Content-Type mặc định để axios tự xử lý FormData cho file upload
+  withCredentials: true
 });
 
 // (Tùy chọn) Interceptor để tự động gắn Token vào header trước khi gửi request đi

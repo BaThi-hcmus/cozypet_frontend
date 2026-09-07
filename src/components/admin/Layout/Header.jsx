@@ -1,31 +1,91 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styles from './Header.module.css';
+import ProfileModal from '../ProfileModal/ProfileModal';
+import api from '../../../api/api';
 
 const Header = () => {
+  const [profile, setProfile] = useState(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [modalPosition, setModalPosition] = useState(null);
+  const avatarRef = useRef(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get('/admin/auth/profile');
+        if (response.data) {
+          setProfile(response.data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const handleAvatarClick = () => {
+    if (profile && avatarRef.current) {
+      const rect = avatarRef.current.getBoundingClientRect();
+      setModalPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+      setIsProfileModalOpen(true);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsProfileModalOpen(false);
+    setModalPosition(null);
+  };
+
   return (
-    <header className={styles.header}>
-      <div className={styles.headerGreeting}>Xin chào, Admin Thi! 🐾</div>
-
-      <div className={styles.headerActions}>
-        <div className={styles.searchBox}>
-          <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
-          <input placeholder="Tìm kiếm pet, phòng..." type="text" />
+    <>
+      <header className={styles.header}>
+        <div className={styles.headerGreeting}>
+          {loading ? 'Đang tải...' : `Xin chào, ${profile?.name || 'Admin'}! 🐾`}
         </div>
 
-        <button className={styles.iconBtn}>
-          <span className="material-symbols-outlined">notifications</span>
-          <span className={styles.badge}></span>
-        </button>
+        <div className={styles.headerActions}>
+          <div className={styles.searchBox}>
+            <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
+            <input placeholder="Tìm kiếm pet, phòng..." type="text" />
+          </div>
 
-        <button className={styles.iconBtn}>
-          <span className="material-symbols-outlined">chat_bubble</span>
-        </button>
+          <button className={styles.iconBtn}>
+            <span className="material-symbols-outlined">notifications</span>
+            <span className={styles.badge}></span>
+          </button>
 
-        <div className={styles.avatar}>
-          <img alt="Admin Thi" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3WJ7dIHTJfDa68j44LgyiZ3kt1yWzRooUTHZW6BYBYJqFSQ_D9ueecCPuGQXapeLb-d8-_ZQ3AJjChUIF0zhyxjzuSGh4BP19dA6gQUe1t7f0mVDZt8AkhXSkBe69ujafNnoYLALbM7PsTgrr_0rYu9cvh2-3KTokjTOlTIBG6ae9nibGYG2PHQb0Fypf09CEbTEkRg5KvR_mqDY3BJ2ZcTiPUidimMvIxHdWKVxowXeoJT9S9U_9" />
+          <button className={styles.iconBtn}>
+            <span className="material-symbols-outlined">chat_bubble</span>
+          </button>
+
+          <div
+            ref={avatarRef}
+            className={styles.avatar}
+            onClick={handleAvatarClick}
+            style={{ cursor: profile ? 'pointer' : 'default' }}
+          >
+            <img 
+              alt={profile?.name || 'Admin'} 
+              src={profile?.avatar || 'https://via.placeholder.com/150'} 
+            />
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={handleCloseModal}
+        profile={profile}
+        position={modalPosition}
+      />
+    </>
   );
 };
 

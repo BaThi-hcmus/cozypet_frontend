@@ -5,6 +5,7 @@ import AccountManagement from './pages/admin/AccountManagement/AccountManagement
 import ItemManagement from './pages/admin/ItemManagement/ItemManagement';
 import RoomManagement from './pages/admin/RoomManagement/RoomManagement';
 import PetTemplateManagement from './pages/admin/PetTemplateManagement/PetTemplateManagement';
+import Login from './pages/admin/Login/Login';
 import PetSetup from './pages/client/PetSetup/PetSetup';
 import Room from './pages/client/Room/Room';
 import { ToastContainer } from 'react-toastify'; // tạo thông báo bên frontend
@@ -18,6 +19,9 @@ function App() {
         {/* Chuyển hướng từ trang gốc về admin */}
         <Route path="/" element={<PetSetup />} />
         <Route path="/room" element={<Room />} />
+
+        {/* Login page */}
+        <Route path="/admin/login" element={<Login />} />
 
         {/* Khung layout chung */}
         <Route path="/admin" element={<AdminLayout />}>
