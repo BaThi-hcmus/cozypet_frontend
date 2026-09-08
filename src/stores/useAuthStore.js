@@ -6,9 +6,12 @@ const useAuthStore = create((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true, // ban đầu để true để chờ check refresh token
+  currentPet: null, // lưu thông tin pet hiện tại của user
+  hasPet: false, // flag để biết user đã có pet chưa
 
   setAccessToken: (token) => set({ accessToken: token, isAuthenticated: !!token }),
   setUser: (user) => set({ user }),
+  setCurrentPet: (pet) => set({ currentPet: pet, hasPet: !!pet }),
 
   // Đăng nhập
   login: async (credentials) => {
@@ -68,13 +71,32 @@ const useAuthStore = create((set, get) => ({
       if (accessToken) {
         set({ accessToken: typeof accessToken === 'string' ? accessToken : accessToken.accessToken, isAuthenticated: true });
         await get().fetchProfile();
+        // Sau khi fetch profile thành công, kiểm tra xem user có pet chưa
+        await get().fetchCurrentPet();
       }
     } catch (error) {
       // Nếu lỗi refresh (hết hạn, ko có) thì reset state
-      set({ accessToken: null, user: null, isAuthenticated: false });
+      set({ accessToken: null, user: null, isAuthenticated: false, currentPet: null, hasPet: false });
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  // Lấy thông tin pet hiện tại của user
+  fetchCurrentPet: async () => {
+    try {
+      const response = await api.get('/pets/my-current-pet');
+      const { pet, petTemplate } = response.data;
+      set({ currentPet: { pet, petTemplate }, hasPet: true });
+    } catch (error) {
+      // Nếu lỗi (404 - không có pet, hoặc lỗi khác) thì reset pet state
+      set({ currentPet: null, hasPet: false });
+    }
+  },
+
+  // Refresh lại pet data (gọi sau khi tạo pet mới)
+  refreshPetData: async () => {
+    await get().fetchCurrentPet();
   }
 }));
 

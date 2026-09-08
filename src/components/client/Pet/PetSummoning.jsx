@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styles from './PetSummoning.module.css';
 import api from '../../../api/api';
+import useAuthStore from '../../../stores/useAuthStore';
+import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 const statuses = [
   {
@@ -29,101 +32,237 @@ const statuses = [
   }
 ];
 
-export default function PetSummoning({ previewUrl, petFile, onSummonComplete }) {
+export default function PetSummoning({ previewUrl, petFile, onSummonComplete, onError }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFading, setIsFading] = useState(false);
   const [apiResult, setApiResult] = useState(null);
   const [apiDone, setApiDone] = useState(false);
+  const [toastShown, setToastShown] = useState(false);
+  const { accessToken } = useAuthStore();
+  const navigate = useNavigate();
+  const hasFiredCallback = useRef(false);
+  const animationTimerRef = useRef(null);
+  const finalStepRef = useRef(null);
+  const watchdogRef = useRef(null);
+  const startTimeRef = useRef(Date.now());
 
-  // Fallback ảnh mẫu nếu chưa có ảnh
   const petImage = previewUrl || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80";
 
-  // Gọi API backend phân tích ảnh
+  // ====== Gọi API phân tích ảnh ======
+  // Chiến lược React 18 Safe: KHÔNG dùng Set/Ref "chặn 2 lần gọi", mà
+  // để Strict Mode mount-unmount-mount bình thường. Lần đầu mount cleanup sẽ abort().
+  // Lần mount thứ 2 (thực sự) mới chạy API thực và hoàn tất.
   useEffect(() => {
+    let cancelled = false;
+    const abortController = new AbortController();
+
+    // Check lỗi trước
+    if (!accessToken) {
+      toast.error('Bạn cần đăng nhập để tạo pet!');
+      setTimeout(() => navigate('/login'), 1500);
+      setApiResult({ error: 'Bạn cần đăng nhập để tạo pet!' });
+      setApiDone(true);
+      return;
+    }
+    if (!petFile) {
+      setApiResult({ error: 'Vui lòng tải lên ảnh pet của bạn!' });
+      setApiDone(true);
+      return;
+    }
+
+    // Toast chỉ hiển thị 1 lần, thông báo đã bắt đầu gửi ảnh lên AI
+    if (!toastShown) {
+      toast.info('Đang gửi ảnh lên AI phân tích, xin vui lòng chờ...', { autoClose: 3000 });
+      setToastShown(true);
+    }
+
+    const apiTimeoutId = setTimeout(() => {
+      if (!cancelled && !apiDone) {
+        abortController.abort();
+      }
+    }, 40000);
+
     const fetchReveal = async () => {
       try {
-        if (petFile) {
-          const formData = new FormData();
-          formData.append('image', petFile);
-          const response = await api.post(`/pet/reveal`, formData);
-          if (response.data) {
-            setApiResult(response.data.data);
-          } else {
-            console.error('API Error:', response.data?.message);
-          }
+        const formData = new FormData();
+        formData.append('image', petFile);
+
+        const response = await api.post(`/pets/user-reveal`, formData, {
+          signal: abortController.signal
+        });
+
+        if (cancelled) return;
+
+        if (response.data) {
+          setApiResult(response.data);
         } else {
-          // Bỏ qua Onboarding (chọn ngẫu nhiên 1 template đang active)
-          const response = await fetch('http://localhost:3000/api/admin/pet-templates?status=active');
-          const resJson = await response.json();
-          if (response.ok && resJson.data && resJson.data.length > 0) {
-            const list = resJson.data.filter(t => t.status === 'active' && !t.deleted);
-            setApiResult(list[Math.floor(Math.random() * list.length)]);
-          }
+          setApiResult({ error: response.data?.message || 'Có lỗi xảy ra khi phân tích ảnh' });
         }
       } catch (error) {
-        console.error('Fetch error:', error);
+        // Bỏ qua lỗi abort (do StrictMode hoặc timeout)
+        if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED' || error.name === 'AbortError') {
+          return;
+        }
+        if (cancelled) return;
+
+        let errorMessage = 'Có lỗi xảy ra khi phân tích ảnh';
+        if (error.response?.status === 401) {
+          errorMessage = 'Bạn cần đăng nhập để tạo pet!';
+          toast.error(errorMessage);
+          setTimeout(() => navigate('/login'), 1500);
+        } else if (error.response?.status === 400) {
+          errorMessage = error.response?.data?.message || 'Dữ liệu không hợp lệ (ảnh có thể không phải chó/mèo)';
+          toast.error(errorMessage);
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+          toast.error(errorMessage);
+        } else if (error.message) {
+          errorMessage = error.message;
+          toast.error(errorMessage);
+        }
+
+        setApiResult({ error: errorMessage });
       } finally {
-        setApiDone(true);
+        if (!cancelled) {
+          clearTimeout(apiTimeoutId);
+          setApiDone(true);
+        }
       }
     };
+
     fetchReveal();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(apiTimeoutId);
+      abortController.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [petFile]);
 
-  // Vòng lặp animation
+  // ====== WATCHDOG an toàn: nếu >50s apiDone vẫn false, bảo người dùng có lỗi ======
   useEffect(() => {
-    const interval = setInterval(() => {
+    startTimeRef.current = Date.now();
+    watchdogRef.current = setInterval(() => {
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      if (!apiDone && elapsed > 50) {
+        clearInterval(watchdogRef.current);
+        watchdogRef.current = null;
+        if (!hasFiredCallback.current) {
+          hasFiredCallback.current = true;
+          toast.error('Hệ thống phản hồi quá lâu. Vui lòng F5 tải lại trang và thử lại!', { autoClose: 8000 });
+          setApiResult({ error: 'Quá thời gian chờ' });
+          if (onError) onError('Quá thời gian chờ, vui lòng tải lại trang và thử lại!');
+        }
+      } else if (!apiDone && elapsed > 25 && elapsed < 26) {
+        toast.info('Đang phân tích chuyên sâu, xin hãy kiên nhẫn thêm chút nữa...', { autoClose: 4000 });
+      }
+    }, 2000);
+
+    return () => {
+      if (watchdogRef.current) {
+        clearInterval(watchdogRef.current);
+        watchdogRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ====== Vòng lặp animation status ======
+  useEffect(() => {
+    const runAnimationStep = () => {
       setIsFading(true);
       setTimeout(() => {
         setCurrentIndex((prev) => {
           const nextIndex = prev + 1;
-          if (nextIndex >= statuses.length) {
-            return prev;
-          }
+          if (nextIndex >= statuses.length) return prev;
           return nextIndex;
         });
         setIsFading(false);
       }, 350);
-    }, 3200);
+    };
 
-    return () => clearInterval(interval);
+    animationTimerRef.current = setInterval(runAnimationStep, 3200);
+
+    return () => {
+      if (animationTimerRef.current) {
+        clearInterval(animationTimerRef.current);
+        animationTimerRef.current = null;
+      }
+    };
   }, []);
 
-  // Khi cả API hoàn thành VÀ hiệu ứng chạy đến trạng thái cuối cùng thì chuyển bước
+  // ====== Khi API xong -> nhảy nhanh đến step cuối ======
   useEffect(() => {
-    if (apiDone && currentIndex === statuses.length - 1) {
-      if (onSummonComplete) {
+    if (!apiDone) return;
+
+    if (animationTimerRef.current) {
+      clearInterval(animationTimerRef.current);
+      animationTimerRef.current = null;
+    }
+
+    const remainingSteps = (statuses.length - 1) - currentIndex;
+    if (remainingSteps <= 0) return;
+
+    let step = 0;
+    finalStepRef.current = setInterval(() => {
+      step++;
+      setIsFading(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => {
+          const next = prev + 1;
+          if (next >= statuses.length) return statuses.length - 1;
+          return next;
+        });
+        setIsFading(false);
+      }, 200);
+
+      if (step >= remainingSteps) {
+        clearInterval(finalStepRef.current);
+        finalStepRef.current = null;
+      }
+    }, 400);
+  }, [apiDone, currentIndex]);
+
+  // ====== Khi cả hai xong -> gọi callback component cha ======
+  useEffect(() => {
+    if (!(apiDone && currentIndex === statuses.length - 1)) return;
+    if (hasFiredCallback.current) return;
+
+    hasFiredCallback.current = true;
+
+    setTimeout(() => {
+      if (apiResult?.error) {
+        if (onError) {
+          onError(apiResult.error);
+        }
+      } else if (onSummonComplete) {
+        toast.success('Phân tích thành công!', { autoClose: 1500 });
         onSummonComplete(apiResult);
       }
-    }
-  }, [apiDone, currentIndex, apiResult, onSummonComplete]);
+    }, 600);
+  }, [apiDone, currentIndex, apiResult, onSummonComplete, onError]);
 
   const currentStatus = statuses[currentIndex];
 
   return (
     <div className={styles.pageWrapper}>
-      {/* Ambient Decorative Background Blobs */}
       <div className={`${styles.ambientBlob} ${styles.blob1}`}></div>
       <div className={`${styles.ambientBlob} ${styles.blob2}`}></div>
 
-      {/* Main Centered Glass Modal Card */}
       <main className={styles.summoningContainer}>
-        {/* Top Healing Badge */}
         <div className={styles.badgeTag}>
           <span className={`material-symbols-rounded ${styles.spinIcon}`}>auto_awesome</span>
           <span>Đang triệu hồi linh hồn thú nhỏ</span>
         </div>
 
-        {/* Central Magical Portal Stage */}
         <div className={styles.portalStage}>
-          {/* Expanding Ripple Waves */}
           <div className={`${styles.pulseRing} ${styles.pulseRing1}`}></div>
           <div className={`${styles.pulseRing} ${styles.pulseRing2}`}></div>
           <div className={`${styles.pulseRing} ${styles.pulseRing3}`}></div>
 
-          {/* Rotating Sacred Aura Ring */}
           <div className={styles.magicAuraRing}></div>
 
-          {/* Floating Sparkles around Avatar */}
           <div className={`${styles.sparkleParticle} ${styles.sparkle1}`}>
             <span className="material-symbols-rounded" style={{ fontSize: '24px' }}>auto_awesome</span>
           </div>
@@ -137,24 +276,16 @@ export default function PetSummoning({ previewUrl, petFile, onSummonComplete }) 
             <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>favorite</span>
           </div>
 
-          {/* Pet Avatar Card */}
           <div className={styles.petAvatarCard}>
             <div className={styles.petAvatarInner}>
-              <img
-                src={petImage}
-                alt="Người bạn nhỏ"
-                className={styles.petImage}
-              />
+              <img src={petImage} alt="Người bạn nhỏ" className={styles.petImage} />
             </div>
-
-            {/* Mini Paw Badge */}
             <div className={styles.pawBadge}>
               <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>pets</span>
             </div>
           </div>
         </div>
 
-        {/* Status Message Section */}
         <div className={styles.statusSection}>
           <h2
             className={`${styles.statusTitle} ${styles.fadeText}`}
@@ -177,7 +308,6 @@ export default function PetSummoning({ previewUrl, petFile, onSummonComplete }) 
           </p>
         </div>
 
-        {/* Healing Energy Progress Bar */}
         <div className={styles.progressSection}>
           <div className={styles.progressHeader}>
             <span className={styles.progressHeaderLabel}>
@@ -186,7 +316,6 @@ export default function PetSummoning({ previewUrl, petFile, onSummonComplete }) 
             </span>
             <span className={styles.progressPercent}>{currentStatus.percent}%</span>
           </div>
-
           <div className={styles.progressTrack}>
             <div
               className={styles.shimmerProgress}
@@ -195,7 +324,6 @@ export default function PetSummoning({ previewUrl, petFile, onSummonComplete }) 
           </div>
         </div>
 
-        {/* Subtitle Safe Note */}
         <div className={styles.safeFooter}>
           <span className={`material-symbols-rounded ${styles.safeFooterIcon}`}>spa</span>
           <span>Hãy hít thở thật sâu trong giây lát bình yên này...</span>

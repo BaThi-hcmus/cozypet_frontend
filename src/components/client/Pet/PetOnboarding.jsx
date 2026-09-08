@@ -1,12 +1,14 @@
 import React, { useState, useRef } from 'react';
 import styles from './PetOnboarding.module.css';
+import { toast } from 'react-toastify';
 
-export default function PetOnboarding({ onNext, onSkip }) {
+export default function PetOnboarding({ onNext }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
+  // kiểm tra định dạng file, cho preview
   const handleFile = (file) => {
     if (!file || !file.type.startsWith('image/')) return;
     setSelectedFile(file);
@@ -17,16 +19,19 @@ export default function PetOnboarding({ onNext, onSkip }) {
     reader.readAsDataURL(file);
   };
 
+  // bắt sự kiện kéo file vào khung
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragging(true);
   };
 
+  // bắt sự kiện kéo file ra khỏi khung
   const handleDragLeave = (e) => {
     e.preventDefault();
     setIsDragging(false);
   };
 
+  // bắt sự kiện thả file trong khung
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
@@ -41,11 +46,16 @@ export default function PetOnboarding({ onNext, onSkip }) {
     }
   };
 
+  // xử lú sự kiện user click vào khung upload file
   const handleClickDropzone = () => {
     fileInputRef.current?.click();
   };
 
   const handleContinue = () => {
+    if (!selectedFile) {
+      toast.error('Vui lòng chọn ảnh pet trước khi tiếp tục!');
+      return;
+    }
     if (onNext) {
       onNext(selectedFile);
     }
@@ -143,17 +153,10 @@ export default function PetOnboarding({ onNext, onSkip }) {
             className={styles.continueButton}
             type="button"
             onClick={handleContinue}
+            disabled={!selectedFile}
           >
             <span>Bước tiếp theo</span>
             <span className="material-symbols-rounded" style={{ fontSize: '20px' }}>arrow_forward</span>
-          </button>
-
-          <button
-            className={styles.skipButton}
-            type="button"
-            onClick={onSkip}
-          >
-            Tạo bạn ảo ngẫu nhiên (để sau)
           </button>
 
           <div className={styles.safeSpaceFooter}>

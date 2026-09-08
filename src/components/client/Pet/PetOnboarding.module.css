@@ -353,6 +353,19 @@
   box-shadow: 0 14px 28px -4px rgba(238, 125, 83, 0.52);
 }
 
+.continueButton:disabled {
+  background: linear-gradient(135deg, #e0e0e0 0%, #d0d0d0 100%);
+  color: #999999;
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.6;
+}
+
+.continueButton:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 .skipButton {
   background: transparent;
   border: none;
