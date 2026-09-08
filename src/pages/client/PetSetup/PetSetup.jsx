@@ -10,6 +10,7 @@ export default function PetSetup() {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [petDataResult, setPetDataResult] = useState(null);
 
+  // user chọn ảnh pet rồi bấm tiếp tục để qua summoning pet
   const handleNextFromOnboarding = useCallback((file) => {
     if (!file) {
       toast.error('Vui lòng chọn ảnh pet trước khi tiếp tục!');
@@ -20,15 +21,17 @@ export default function PetSetup() {
     setStep(2);
   }, []);
 
+  // gemini phân tích rồi trả ra kết quả => đưa qua bước reveal để show ảnh
   const handleSummonComplete = useCallback((resultData) => {
     setPetDataResult(resultData);
     setStep(3);
   }, []);
 
+  // Lỗi ở bước phân tích của gemini
   const handleSummonError = useCallback((errorMessage) => {
     console.error("Triệu hồi thất bại:", errorMessage);
     toast.error(errorMessage || "Có lỗi xảy ra khi phân tích ảnh. Vui lòng thử lại!");
-    setStep(1);
+    setStep(1); // quay lại onboarding
   }, []);
 
   return (
