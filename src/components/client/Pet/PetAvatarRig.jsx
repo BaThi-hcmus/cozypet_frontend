@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import styles from './PetAvatarRig.module.css';
 import { getPartAnimationOffsets, clampPartSize, calcOriginOffset, MAX_REACTION_DURATION } from '../../../utils/petAnimations';
 
-export const PetAvatarRig = ({ type, layers, globalZoom = 1, globalOffset = { x: 0, y: 0 }, name }) => {
+export const PetAvatarRig = ({ type, layers, globalZoom = 1, globalOffset = { x: 0, y: 0 }, name, compact = false, showInfo = true }) => {
   const canvasRef = useRef(null);
   const [animationState, setAnimationState] = useState('idle');
   const animStartTimeRef = useRef(0);
@@ -226,9 +226,8 @@ export const PetAvatarRig = ({ type, layers, globalZoom = 1, globalOffset = { x:
   };
 
   return (
-    <div className={styles['pet-container']}>
-      {/* Khung chứa Canvas render modular 6+ part */}
-      <div className={styles['pet-stage']}>
+    <div className={`${styles['pet-container']} ${compact ? styles['pet-container-compact'] : ''}`}>
+      <div className={`${styles['pet-stage']} ${compact ? styles['pet-stage-compact'] : ''}`}>
         <canvas 
           ref={canvasRef} 
           className={styles['pet-canvas']} 
@@ -237,15 +236,16 @@ export const PetAvatarRig = ({ type, layers, globalZoom = 1, globalOffset = { x:
         />
       </div>
 
-      {/* --- PHẦN HIỂN THỊ THÔNG TIN & HỘI THOẠI (UI DIALOGUE) --- */}
-      <div className={styles['pet-info']}>
-        <h3 className={styles['pet-name']}>{name}</h3>
-        <p className={styles['pet-dialogue']}>
-          {animationState === 'clicked' && (type === 'cat' ? "Meo! Đừng chọc vào đầu tớ!" : "Gâu! Đau đầu quá nhả ra đi!")}
-          {animationState === 'talking' && "Đói bụng quá sen ơi, cho xin miếng bánh đi!"}
-          {animationState === 'idle' && "Đang ngoan ngoãn chờ chơi cùng bạn..."}
-        </p>
-      </div>
+      {showInfo && (
+        <div className={styles['pet-info']}>
+          <h3 className={styles['pet-name']}>{name}</h3>
+          <p className={styles['pet-dialogue']}>
+            {animationState === 'clicked' && (type === 'cat' ? "Meo! Đừng chọc vào đầu tớ!" : "Gâu! Đau đầu quá nhả ra đi!")}
+            {animationState === 'talking' && "Đói bụng quá sen ơi, cho xin miếng bánh đi!"}
+            {animationState === 'idle' && "Đang ngoan ngoãn chờ chơi cùng bạn..."}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

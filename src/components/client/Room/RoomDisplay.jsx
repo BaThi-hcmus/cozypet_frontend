@@ -1,110 +1,166 @@
 import React from 'react';
 import styles from './RoomDisplay.module.css';
+import { PetAvatarRig } from '../Pet/PetAvatarRig';
 
-export default function RoomDisplay({ room, items }) {
+const STATUS_META = [
+  { key: 'hunger', label: 'Đói', icon: 'restaurant', color: '#ff9a62' },
+  { key: 'energy', label: 'Năng lượng', icon: 'bolt', color: '#7ec8e3' },
+  { key: 'happiness', label: 'Vui vẻ', icon: 'favorite', color: '#ff8fa3' },
+];
+
+function slotStyle(slot, canvasSize) {
+  const scaleFactor = slot.scaleFactor || 1;
+
+  return {
+    left: `${(slot.x / canvasSize) * 100}%`,
+    top: `${(slot.y / canvasSize) * 100}%`,
+    width: `${scaleFactor * 100}%`,
+    height: `${scaleFactor * 100}%`,
+    zIndex: slot.zIndex || 1,
+  };
+}
+
+export default function RoomDisplay({
+  canvasSize = 1000,
+  profile,
+  room,
+  placedItems = [],
+  pet,
+  petTemplate,
+  inventoryCount = 0,
+}) {
   if (!room) return null;
+
+  const petName = pet?.name || petTemplate?.name || 'Bạn nhỏ';
+  const petStatus = pet?.status || {};
+  const hasLayers = petTemplate?.layers && Object.keys(petTemplate.layers).length > 0;
 
   return (
     <div className={styles.pageWrapper}>
-      {/* Ambient Background Effects */}
-      <div className={`${styles.ambientBlob} ${styles.blob1}`}></div>
-      <div className={`${styles.ambientBlob} ${styles.blob2}`}></div>
-      <div className={`${styles.ambientBlob} ${styles.blob3}`}></div>
+      <div className={`${styles.ambientBlob} ${styles.blob1}`} />
+      <div className={`${styles.ambientBlob} ${styles.blob2}`} />
+      <div className={`${styles.ambientBlob} ${styles.blob3}`} />
 
-      {/* Main Room Container */}
-      <main className={styles.roomContainer}>
-        {/* Header Section */}
-        <header className={styles.headerSection}>
+      <main className={styles.layout}>
+        <aside className={styles.sideCard}>
           <div className={styles.roomBadge}>
-            <span className="material-symbols-rounded">home</span>
-            <span>Không gian của bé</span>
+            <span className="material-symbols-outlined">cottage</span>
+            <span>Phòng của {profile?.fullName?.split(' ')[0] || 'bạn'}</span>
           </div>
-          
-          <h1 className={styles.roomTitle}>
-            <span>{room.name}</span>
-            <span className={`material-symbols-rounded ${styles.sparkleIcon}`}>auto_awesome</span>
-          </h1>
-          
-          {room.description && (
-            <p className={styles.roomDescription}>{room.description}</p>
-          )}
-        </header>
 
-        {/* Room Canvas Area */}
-        <section className={styles.roomCanvas}>
-          {/* Background Image */}
-          <div 
-            className={styles.roomBackground}
-            style={{ backgroundImage: `url(${room.background_url})` }}
-          >
-            {/* Floating Decorative Elements */}
-            <div className={`${styles.floatingElement} ${styles.star1}`}>
-              <span className="material-symbols-rounded">star</span>
-            </div>
-            <div className={`${styles.floatingElement} ${styles.star2}`}>
-              <span className="material-symbols-rounded">star</span>
-            </div>
-            <div className={`${styles.floatingElement} ${styles.heart1}`}>
-              <span className="material-symbols-rounded">favorite</span>
+          <h1 className={styles.roomTitle}>{room.name}</h1>
+          {room.description && <p className={styles.roomDescription}>{room.description}</p>}
+
+          <div className={styles.petCard}>
+            <div className={styles.petCardHeader}>
+              <span className="material-symbols-outlined">pets</span>
+              <div>
+                <strong>{petName}</strong>
+                <p>
+                  Lv. {pet?.level || 1} · {petTemplate?.species === 'cat' ? 'Mèo' : 'Chó'}
+                </p>
+              </div>
             </div>
 
-            {/* Room Slots with Items */}
-            {Object.entries(room.slots || {}).map(([slotId, slot]) => {
-              const item = items[slotId];
-              if (!item) return null;
-
-              return (
-                <div
-                  key={slotId}
-                  className={styles.itemSlot}
-                  style={{
-                    left: `${slot.x}%`,
-                    top: `${slot.y}%`,
-                    zIndex: slot.zIndex || 1,
-                    transform: `scale(${slot.scaleFactor || 1})`,
-                  }}
-                >
-                  <div className={styles.itemContainer}>
-                    <img 
-                      src={item.image_url} 
-                      alt={item.name}
-                      className={styles.itemImage}
-                    />
-                    <div className={styles.itemTooltip}>
-                      <span className={styles.itemName}>{item.name}</span>
-                      <span className={styles.itemCategory}>{item.category}</span>
+            <div className={styles.statusList}>
+              {STATUS_META.map((stat) => {
+                const value = Math.max(0, Math.min(100, Number(petStatus[stat.key] ?? 100)));
+                return (
+                  <div key={stat.key} className={styles.statusRow}>
+                    <div className={styles.statusLabel}>
+                      <span className="material-symbols-outlined">{stat.icon}</span>
+                      {stat.label}
+                      <em>{value}</em>
+                    </div>
+                    <div className={styles.statusTrack}>
+                      <span
+                        className={styles.statusFill}
+                        style={{ width: `${value}%`, background: stat.color }}
+                      />
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className={styles.metaChips}>
+            <div className={styles.chip}>
+              <span className="material-symbols-outlined">inventory_2</span>
+              {inventoryCount} vật phẩm
+            </div>
+            <div className={styles.chip}>
+              <span className="material-symbols-outlined">chair</span>
+              {placedItems.length} đang bày
+            </div>
+          </div>
+        </aside>
+
+        <section className={styles.sceneColumn}>
+          <div className={styles.sceneFrame}>
+            <div
+              className={styles.roomScene}
+              style={{
+                width: `min(${canvasSize}px, 100%)`,
+              }}
+            >
+              <img
+                src={room.background_url}
+                alt={room.name}
+                className={styles.roomBackground}
+              />
+
+              {placedItems.map(({ slotKey, slot, item }) => (
+                <div
+                  key={slotKey}
+                  className={styles.itemSlot}
+                  style={slotStyle(slot, canvasSize)}
+                >
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className={styles.itemImage}
+                    draggable={false}
+                  />
+                  <div className={styles.itemTooltip}>
+                    <span className={styles.itemName}>{item.name}</span>
+                    <span className={styles.itemCategory}>{item.category}</span>
+                  </div>
                 </div>
-              );
-            })}
+              ))}
+
+              {(hasLayers || petTemplate?.avatar) && (
+                <div className={styles.petAnchor}>
+                  <div className={styles.petNameTag}>
+                    <span className="material-symbols-outlined">favorite</span>
+                    {petName}
+                  </div>
+                  {hasLayers ? (
+                    <PetAvatarRig
+                      type={petTemplate.species}
+                      layers={petTemplate.layers}
+                      globalZoom={petTemplate.globalZoom}
+                      globalOffset={petTemplate.globalOffset || { x: 0, y: 0 }}
+                      name={petName}
+                      compact
+                      showInfo={false}
+                    />
+                  ) : (
+                    <img
+                      src={petTemplate.avatar}
+                      alt={petName}
+                      className={styles.petFallback}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
           </div>
+
+          <p className={styles.hint}>
+            Chạm vào bé để chơi · Đồ vật được đặt đúng vị trí và tỷ lệ trong phòng 1000×1000
+          </p>
         </section>
-
-        {/* Interactive Controls */}
-        <footer className={styles.controlsSection}>
-          <div className={styles.controlsBadge}>
-            <span className="material-symbols-rounded">touch_app</span>
-            <span>Chạm vào đồ vật để tương tác</span>
-          </div>
-          
-          <div className={styles.actionButtons}>
-            <button className={styles.interactButton}>
-              <span className="material-symbols-rounded">pets</span>
-              <span>Chơi cùng bé</span>
-            </button>
-            <button className={styles.customizeButton}>
-              <span className="material-symbols-rounded">palette</span>
-              <span>Trang trí phòng</span>
-            </button>
-          </div>
-        </footer>
-
-        {/* Safe Space Footer */}
-        <div className={styles.safeFooter}>
-          <span className="material-symbols-rounded">spa</span>
-          <span>Nơi bình yên cho người bạn nhỏ của bạn</span>
-        </div>
       </main>
     </div>
   );

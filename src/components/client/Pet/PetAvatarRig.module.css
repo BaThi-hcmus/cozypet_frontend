@@ -9,6 +9,12 @@
   user-select: none;
 }
 
+.pet-container-compact {
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .pet-stage {
   position: relative;
   width: 20rem;
@@ -17,6 +23,11 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.pet-stage-compact {
+  width: 100%;
+  height: 100%;
 }
 
 /* Thẻ Canvas hiển thị mượt mà, không bị bóp méo tỷ lệ */
