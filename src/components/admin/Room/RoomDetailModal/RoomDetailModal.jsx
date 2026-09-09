@@ -9,6 +9,8 @@ function RoomDetailModal({ isOpen, onClose, data, onEditClick }) {
     data.background_url ||
     'https://via.placeholder.com/400?text=Room';
 
+  const price = Number(data.price ?? 0);
+
   const handleEdit = () => {
     onClose();
     if (onEditClick) onEditClick(data);
@@ -33,6 +35,17 @@ function RoomDetailModal({ isOpen, onClose, data, onEditClick }) {
                 className={styles.roomImage}
               />
             </div>
+            {price === 0 ? (
+              <div className={styles.priceFreeBadge}>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>redeem</span>
+                <span>🎁 Phòng miễn phí</span>
+              </div>
+            ) : (
+              <div className={styles.priceBadge}>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>paid</span>
+                <span>{price.toLocaleString('vi-VN')} Coins</span>
+              </div>
+            )}
           </div>
           <div className={styles.infoSection}>
             <div className={styles.infoRow}>
@@ -42,6 +55,30 @@ function RoomDetailModal({ isOpen, onClose, data, onEditClick }) {
             <div className={styles.infoRow}>
               <span className={styles.infoLabel}>Tên phòng:</span>
               <span className={styles.infoValue}>{data.name}</span>
+            </div>
+            <div className={styles.infoRow}>
+              <span className={styles.infoLabel}>Giá phòng:</span>
+              <span className={styles.infoValue}>
+                {price === 0 ? (
+                  <span style={{ color: '#15803d', fontWeight: 'bold' }}>
+                    🎁 Miễn phí (0 Coins)
+                  </span>
+                ) : (
+                  <span style={{ color: '#c2410c', fontWeight: 'bold' }}>
+                    💰 {price.toLocaleString('vi-VN')} Coins
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className={styles.infoRow}>
+              <span className={styles.infoLabel}>Phòng mặc định:</span>
+              <span className={styles.infoValue}>
+                {data.isDefault ? (
+                  <span style={{ color: '#1d4ed8', fontWeight: 'bold' }}>⭐ Có</span>
+                ) : (
+                  <span style={{ color: '#64748b' }}>Không</span>
+                )}
+              </span>
             </div>
             <div className={styles.infoRow}>
               <span className={styles.infoLabel}>Trạng thái:</span>

@@ -33,6 +33,7 @@ function RoomTable({
               <th>Ảnh nền</th>
               <th>Mã phòng</th>
               <th>Tên phòng</th>
+              <th>Giá (Coins)</th>
               <th>Số lượng Slot</th>
               <th>Trạng thái</th>
               <th>Thao tác</th>
@@ -42,6 +43,7 @@ function RoomTable({
             {rooms && rooms.length > 0 ? (
               rooms.map((room) => {
                 const isChecked = selectedIds.includes(room._id);
+                const price = Number(room.price ?? 0);
 
                 return (
                   <tr key={room._id}>
@@ -66,6 +68,17 @@ function RoomTable({
                       {room.isDefault && (
                         <span style={{ marginLeft: '8px', padding: '2px 8px', background: '#dcfce7', color: '#15803d', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', display: 'inline-block' }}>
                           ⭐ Mặc định
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {price === 0 ? (
+                        <span style={{ color: '#15803d', fontWeight: 'bold', fontSize: '13px' }}>
+                          🎁 Miễn phí
+                        </span>
+                      ) : (
+                        <span style={{ color: '#c2410c', fontWeight: 'bold', fontSize: '13px' }}>
+                          💰 {price.toLocaleString('vi-VN')}
                         </span>
                       )}
                     </td>
@@ -126,7 +139,7 @@ function RoomTable({
               })
             ) : (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>
                   Chưa có phòng nào
                 </td>
               </tr>
@@ -135,7 +148,6 @@ function RoomTable({
         </table>
       </div>
 
-      {/* Phân trang dạng số và mũi tên */}
       {paginationObj && paginationObj.totalPage >= 1 && (
         <div className={styles.pagination}>
           <button

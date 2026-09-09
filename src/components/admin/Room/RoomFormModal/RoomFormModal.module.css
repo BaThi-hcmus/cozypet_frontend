@@ -235,7 +235,9 @@
 }
 
 .formGroup input[type='text'],
+.formGroup input[type='number'],
 .formGroup textarea {
+  width: 100%;
   padding: 10px 14px;
   border: 1px solid #cbd5e1;
   border-radius: 12px;
@@ -243,6 +245,19 @@
   outline: none;
   transition: all 0.2s;
   background: #f8fafc;
+  color: #0f172a;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.formGroup input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.formGroup input[type='number']::-webkit-outer-spin-button,
+.formGroup input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .formGroup input:focus,
@@ -255,6 +270,66 @@
 .formGroup textarea {
   resize: vertical;
   min-height: 100px;
+}
+
+.inputGroupWithAffix {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.inputGroupPrefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+  color: #78350f;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.inputGroupPrefix .material-symbols-outlined {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.inputGroupWithAffix input[type='number'] {
+  padding-left: 50px;
+  padding-right: 82px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #b45309;
+}
+
+.inputGroupSuffix {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid #fed7aa;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.inputGroupSuffixCoinIcon {
+  font-size: 14px !important;
 }
 
 /* Status Switcher */

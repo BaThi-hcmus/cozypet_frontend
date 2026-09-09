@@ -71,6 +71,10 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
       setPreviewUrl(initialData.avatar || '');
       setImageFile(null);
       setRiggingLayersConfig(initialData?.layers || null);
+      setGlobalZoom(typeof initialData.globalZoom === 'number' ? initialData.globalZoom : 1);
+      setGlobalOffset(initialData.globalOffset && typeof initialData.globalOffset === 'object'
+        ? { x: Number(initialData.globalOffset.x) || 0, y: Number(initialData.globalOffset.y) || 0 }
+        : { x: 0, y: 0 });
 
       // Nếu có sẵn layers từ DB, nạp preview url vào
       if (initialData.layers) {
@@ -90,6 +94,8 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
       setImageFile(null);
       setPartPreviews({});
       setRiggingLayersConfig(null);
+      setGlobalZoom(1);
+      setGlobalOffset({ x: 0, y: 0 });
     }
     setIsSubmitting(false);
   }, [initialData, isOpen]);
@@ -144,8 +150,8 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
       formPayload.append('species', formData.species);
       formPayload.append('name', formData.name.trim());
       // 2 trường hỗ trợ vẽ giao diện preview
-      formPayload.append('globalZoom', globalZoom);
-      formPayload.append('globalOffset', globalOffset);
+      formPayload.append('globalZoom', String(globalZoom));
+      formPayload.append('globalOffset', JSON.stringify(globalOffset));
 
       if (imageFile) {
         formPayload.append('avatar', imageFile);
@@ -158,7 +164,7 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
         }
       });
 
-      // Đính kèm chuỗi JSON cấu hình tọa độ layers vào payload
+      // Đính kèm chuỗi JSON cấu hình tọa độ layers vào payload (luôn gửi nếu có)
       if (riggingLayersConfig) {
         formPayload.append('layers', JSON.stringify(riggingLayersConfig));
       }

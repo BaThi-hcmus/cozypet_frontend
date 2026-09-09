@@ -12,16 +12,12 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
     description: '',
     status: 'active',
     isDefault: false,
+    price: 0,
   });
 
-  // Ảnh preview & file gửi server
   const [previewUrl, setPreviewUrl] = useState('');
   const [imageFile, setImageFile] = useState(null);
-  
-  // Dữ liệu slots
   const [slots, setSlots] = useState([]);
-
-  // Canvas editor
   const [rawImageSrc, setRawImageSrc] = useState(null);
   const [isCanvasEditorOpen, setIsCanvasEditorOpen] = useState(false);
 
@@ -33,6 +29,7 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
         description: initialData.description || '',
         status: initialData.status || 'active',
         isDefault: initialData.isDefault ?? false,
+        price: initialData.price ?? 0,
       });
       setPreviewUrl(initialData.backgroundUrl || initialData.background_url || '');
       setSlots(initialData.slots || []);
@@ -45,6 +42,7 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
         description: '',
         status: 'active',
         isDefault: false,
+        price: 0,
       });
       setPreviewUrl('');
       setSlots([]);
@@ -53,7 +51,6 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
     }
   }, [initialData, isOpen]);
 
-  // ===== Dropzone config =====
   const dropzone = useDropzone({
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
     maxSize: 10 * 1024 * 1024,
@@ -73,12 +70,10 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
   });
 
   const handleOpenEditorWithCurrentData = () => {
-    // Nếu đang sửa và chưa upload ảnh mới, truyền ảnh cũ vào editor
     setRawImageSrc(previewUrl);
     setIsCanvasEditorOpen(true);
   };
 
-  // ===== Nhận dữ liệu từ Canvas Editor =====
   const handleCanvasConfirm = (croppedFile, croppedPreviewUrl, editedSlots) => {
     if (croppedFile) {
       setPreviewUrl(croppedPreviewUrl);
@@ -91,7 +86,12 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === 'price') {
+      const num = value === '' ? 0 : Number(value);
+      setFormData((prev) => ({ ...prev, [name]: isNaN(num) ? 0 : num }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -102,9 +102,8 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
       formPayload.append('name', formData.name);
       formPayload.append('description', formData.description);
       formPayload.append('status', formData.status);
-      formPayload.append('isDefault', formData.isDefault);
-      
-      // Chuyển slots thành chuỗi JSON
+      formPayload.append('isDefault', formData.isDefault === true ? 'true' : 'false');
+      formPayload.append('price', String(formData.price ?? 0));
       formPayload.append('slots', JSON.stringify(slots));
 
       if (imageFile) {
@@ -146,7 +145,6 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
         </div>
 
         <form onSubmit={handleSubmit} id="roomForm" className={styles.modalBodyGrid}>
-          {/* Cột trái: Ảnh nền & Trình chỉnh sửa */}
           <div className={styles.modalLeftCol}>
             <div className={styles.previewSection}>
               {previewUrl ? (
@@ -187,7 +185,6 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
             )}
           </div>
 
-          {/* Cột phải: Các trường thông tin */}
           <div className={styles.modalRightCol}>
             <div className={styles.formGroup}>
               <label>Mã phòng *</label>
@@ -214,13 +211,40 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
             </div>
 
             <div className={styles.formGroup}>
+              <label>Giá phòng</label>
+              <div className={styles.inputGroupWithAffix}>
+                <span className={styles.inputGroupPrefix}>
+                  <span className="material-symbols-outlined">paid</span>
+                </span>
+                <input
+                  type="number"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleChange}
+                  placeholder="0 - Phòng miễn phí"
+                  min="0"
+                  step="1"
+                />
+                <span className={styles.inputGroupSuffix}>
+                  <span className={`material-symbols-outlined ${styles.inputGroupSuffixCoinIcon}`}>monetization_on</span>
+                  <span>Coins</span>
+                </span>
+              </div>
+              {Number(formData.price ?? 0) === 0 && (
+                <span style={{ fontSize: '12px', color: '#15803d', marginTop: '6px', display: 'inline-block', fontWeight: 600 }}>
+                  🎁 Phòng miễn phí, tất cả người dùng có thể sử dụng
+                </span>
+              )}
+            </div>
+
+            <div className={styles.formGroup}>
               <label>Mô tả</label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 placeholder="Mô tả về phòng..."
-                rows="4"
+                rows="3"
               />
             </div>
 
@@ -275,7 +299,6 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
           </button>
         </div>
 
-        {/* Canvas Editor 1000x1000 */}
         {isCanvasEditorOpen && (
           <RoomCanvasEditor
             isOpen={isCanvasEditorOpen}
