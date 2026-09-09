@@ -59,6 +59,7 @@ function ItemTable({
               <th>Hình ảnh</th>
               <th>Tên vật phẩm</th>
               <th>Loại</th>
+              <th>Phòng</th>
               <th>Giá bán</th>
               <th>Trạng thái</th>
               <th>Thao tác</th>
@@ -95,6 +96,25 @@ function ItemTable({
                       <span className={`${styles.typeBadge} ${typeObj.style}`}>
                         {typeObj.label}
                       </span>
+                    </td>
+                    <td>
+                      {item.roomCode ? (
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: '#ede9fe',
+                            color: '#6d28d9',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {item.roomCode}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontSize: '12px' }}>— Toàn cục</span>
+                      )}
                     </td>
                     <td className={styles.priceText}>{formatPrice(item.price)}</td>
                     <td>
@@ -149,7 +169,7 @@ function ItemTable({
               })
             ) : (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>
                   Chưa có vật phẩm nào
                 </td>
               </tr>

@@ -84,7 +84,11 @@ function RoomTable({
                     </td>
                     <td>
                       <span className={styles.slotCount}>
-                        {room.slots?.length || 0} slots
+                        {Array.isArray(room.slots)
+                          ? room.slots.length
+                          : room.slots && typeof room.slots === 'object'
+                          ? Object.keys(room.slots).length
+                          : 0} slots
                       </span>
                     </td>
                     <td>

@@ -34,6 +34,7 @@ function ItemManagement() {
 
   // hằng số
   const [constants, setConstants] = useState(null);
+  const [rooms, setRooms] = useState([]);
 
   // chỉ chạy 1 lần duy nhất để tải các hằng số
   const fetchConstant = useCallback(async () => {
@@ -45,9 +46,22 @@ function ItemManagement() {
     }
   }, []);
 
+  // Tải danh sách phòng (dùng cho item roomCode dropdown)
+  const fetchRooms = useCallback(async () => {
+    try {
+      const response = await api.get('/admin/rooms', {
+        params: { status: 'active', pageSize: 999 },
+      });
+      setRooms(response.data.rooms || response.data.data || []);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Lấy danh sách phòng thất bại');
+    }
+  }, []);
+
   useEffect(() => {
     fetchConstant();
-  }, [fetchConstant]);
+    fetchRooms();
+  }, [fetchConstant, fetchRooms]);
 
   const fetchItems = useCallback(async () => {
     try {
@@ -227,6 +241,7 @@ function ItemManagement() {
       {/* Modal Thêm mới / Cập nhật */}
       <ItemFormModal
         constants={constants}
+        rooms={rooms}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         initialData={dataInUpdateModal}

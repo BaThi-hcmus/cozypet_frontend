@@ -36,7 +36,7 @@ function sortConfiguredSlotsForDisplay(configuredSlots, typeIndexes, typeOrder =
   });
 }
 
-function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfirm }) {
+function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], roomCode = '', onConfirm }) {
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -66,12 +66,19 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
   const dragStartRef = useRef({ x: 0, y: 0, startX: 0, startY: 0, targetId: null });
   const editSnapshotRef = useRef(null);
 
+  const normalizeSlotsList = (raw) => {
+    if (Array.isArray(raw)) return raw;
+    if (raw && typeof raw === 'object') return Object.values(raw);
+    return [];
+  };
+
   // Load init data
   useEffect(() => {
     if (!isOpen) return;
 
-    if (initialSlots && initialSlots.length > 0) {
-      setSlots(initialSlots.map((s) => ({ ...s, isConfigured: true })));
+    const slotList = normalizeSlotsList(initialSlots);
+    if (slotList.length > 0) {
+      setSlots(slotList.map((s) => ({ ...s, isConfigured: true })));
       setIsBackgroundLocked(true);
     } else {
       setSlots([]);
@@ -87,7 +94,8 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
   useEffect(() => {
     if (!isOpen || !initialSlots) return;
 
-    initialSlots.forEach(async (slot) => {
+    const slotList = normalizeSlotsList(initialSlots);
+    slotList.forEach(async (slot) => {
       const defaultItemId = slot.defaultItemId?._id || slot.defaultItemId;
       if (defaultItemId && !itemImagesRef.current[defaultItemId]) {
         try {
@@ -475,6 +483,7 @@ function RoomCanvasEditor({ isOpen, onClose, imgSrc, initialSlots = [], onConfir
           type: slot.type,
           category: slot.category,
           slotType: slot.slotType,
+          roomCode: roomCode || undefined,
         },
       });
       const items = response.data.data || response.data || [];

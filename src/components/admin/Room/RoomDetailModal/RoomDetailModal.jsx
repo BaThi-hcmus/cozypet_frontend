@@ -92,7 +92,13 @@ function RoomDetailModal({ isOpen, onClose, data, onEditClick }) {
             </div>
             <div className={styles.infoRow}>
               <span className={styles.infoLabel}>Số lượng slots:</span>
-              <span className={styles.infoValue}>{data.slots?.length || 0}</span>
+              <span className={styles.infoValue}>
+                {Array.isArray(data.slots)
+                  ? data.slots.length
+                  : data.slots && typeof data.slots === 'object'
+                  ? Object.keys(data.slots).length
+                  : 0}
+              </span>
             </div>
             <div className={styles.infoRow}>
               <span className={styles.infoLabel}>Mô tả:</span>

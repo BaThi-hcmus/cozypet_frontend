@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import { useDropzone } from 'react-dropzone';
 import ItemCanvasEditor from '../ItemCanvasEditor/ItemCanvasEditor';
 
-function ItemFormModal({ constants, isOpen, onClose, initialData, onSuccess }) {
+function ItemFormModal({ constants, rooms = [], isOpen, onClose, initialData, onSuccess }) {
   const [formData, setFormData] = useState({
     name: '',
     type: 'furniture',
@@ -15,6 +15,7 @@ function ItemFormModal({ constants, isOpen, onClose, initialData, onSuccess }) {
     height: 1,
     status: 'active',
     slotType: 'center_floor',
+    roomCode: '',
     image: '',
   });
 
@@ -37,6 +38,7 @@ function ItemFormModal({ constants, isOpen, onClose, initialData, onSuccess }) {
         height: initialData.height ?? 1,
         status: initialData.status || 'active',
         slotType: initialData.slotType || 'center_floor',
+        roomCode: initialData.roomCode || '',
         image: initialData.image || '',
       });
       setPreviewUrl(initialData.image || '');
@@ -52,6 +54,7 @@ function ItemFormModal({ constants, isOpen, onClose, initialData, onSuccess }) {
         height: 1,
         status: 'active',
         slotType: 'center_floor',
+        roomCode: '',
         image: '',
       });
       setPreviewUrl('');
@@ -168,6 +171,9 @@ function ItemFormModal({ constants, isOpen, onClose, initialData, onSuccess }) {
       formPayload.append('height', Number(formData.height || 1));
       formPayload.append('status', formData.status);
       formPayload.append('slotType', formData.slotType);
+      if (formData.roomCode) {
+        formPayload.append('roomCode', String(formData.roomCode).trim());
+      }
 
       if (imageFile) {
         formPayload.append('image', imageFile);
@@ -238,6 +244,29 @@ function ItemFormModal({ constants, isOpen, onClose, initialData, onSuccess }) {
                 placeholder="VD: Giường cún công chúa..."
                 required
               />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Thuộc Phòng (Room)</label>
+              <select
+                name="roomCode"
+                value={formData.roomCode}
+                onChange={handleChange}
+                className={styles.selectInput}
+              >
+                <option value="">-- Không gắn vào phòng cụ thể (toàn cục) --</option>
+                {rooms && rooms.length > 0 && rooms.map((room) => {
+                  const defaultBadge = room.isDefault ? ' ⭐' : '';
+                  return (
+                    <option key={room.code || room._id} value={room.code}>
+                      {room.code} — {room.name}{defaultBadge}
+                    </option>
+                  );
+                })}
+              </select>
+              <p style={{ marginTop: '6px', fontSize: '12px', color: '#64748b' }}>
+                Gắn vật phẩm này vào 1 phòng cụ thể. Để trống = tất cả phòng đều dùng được.
+              </p>
             </div>
 
             <div className={styles.formGroup}>
@@ -349,7 +378,6 @@ function ItemFormModal({ constants, isOpen, onClose, initialData, onSuccess }) {
                 })}
               </select>
             </div>
-
 
           </div>
         </form>

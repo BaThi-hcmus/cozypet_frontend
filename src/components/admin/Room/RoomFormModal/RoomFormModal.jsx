@@ -17,9 +17,11 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
 
   const [previewUrl, setPreviewUrl] = useState('');
   const [imageFile, setImageFile] = useState(null);
-  const [slots, setSlots] = useState([]);
+  const [slots, setSlots] = useState({});
   const [rawImageSrc, setRawImageSrc] = useState(null);
   const [isCanvasEditorOpen, setIsCanvasEditorOpen] = useState(false);
+
+  const slotsCount = Object.keys(slots || {}).length;
 
   useEffect(() => {
     if (initialData) {
@@ -32,7 +34,16 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
         price: initialData.price ?? 0,
       });
       setPreviewUrl(initialData.backgroundUrl || initialData.background_url || '');
-      setSlots(initialData.slots || []);
+      const rawSlots = initialData.slots || {};
+      const normalizedSlots = Array.isArray(rawSlots)
+        ? rawSlots.reduce((acc, s) => {
+            if (s && s.id) acc[s.id] = s;
+            return acc;
+          }, {})
+        : rawSlots && typeof rawSlots === 'object'
+        ? rawSlots
+        : {};
+      setSlots(normalizedSlots);
       setImageFile(null);
       setRawImageSrc(null);
     } else {
@@ -45,7 +56,7 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
         price: 0,
       });
       setPreviewUrl('');
-      setSlots([]);
+      setSlots({});
       setImageFile(null);
       setRawImageSrc(null);
     }
@@ -79,7 +90,13 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
       setPreviewUrl(croppedPreviewUrl);
       setImageFile(croppedFile);
     }
-    setSlots(editedSlots);
+    const slotsObject = (editedSlots || []).reduce((acc, slot) => {
+      if (slot && slot.id) {
+        acc[slot.id] = slot;
+      }
+      return acc;
+    }, {});
+    setSlots(slotsObject);
   };
 
   if (!isOpen) return null;
@@ -104,7 +121,7 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
       formPayload.append('status', formData.status);
       formPayload.append('isDefault', formData.isDefault === true ? 'true' : 'false');
       formPayload.append('price', String(formData.price ?? 0));
-      formPayload.append('slots', JSON.stringify(slots));
+      formPayload.append('slots', JSON.stringify(slots || {}));
 
       if (imageFile) {
         formPayload.append('background_url', imageFile);
@@ -151,7 +168,7 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
                 <div className={styles.imagePreviewContainer}>
                   <img src={previewUrl} alt="Background" className={styles.previewImg} />
                   <div className={styles.slotsCountBadge}>
-                    {slots.length} slots đã cấu hình
+                    {slotsCount} slots đã cấu hình
                   </div>
                 </div>
               ) : (
@@ -168,7 +185,7 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
             <div className={styles.actionButtonsCol}>
               {previewUrl && (
                 <button type="button" className={styles.btnOpenEditor} onClick={handleOpenEditorWithCurrentData}>
-                  <span>🎯</span> {slots.length > 0 ? 'Sửa cấu hình Slots & Nền' : 'Mở bộ công cụ vẽ Slots'}
+                  <span>🎯</span> {slotsCount > 0 ? 'Sửa cấu hình Slots & Nền' : 'Mở bộ công cụ vẽ Slots'}
                 </button>
               )}
               {previewUrl && (
@@ -304,7 +321,8 @@ function RoomFormModal({ isOpen, onClose, initialData, onSuccess }) {
             isOpen={isCanvasEditorOpen}
             onClose={() => setIsCanvasEditorOpen(false)}
             imgSrc={rawImageSrc}
-            initialSlots={slots}
+            initialSlots={Object.values(slots || {})}
+            roomCode={formData.code}
             onConfirm={handleCanvasConfirm}
           />
         )}
