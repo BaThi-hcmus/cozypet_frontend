@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import RoomDisplay from '../../../components/client/Room/RoomDisplay';
+import ShopModal from '../../../components/client/Shop/ShopModal';
 import api from '../../../api/api';
 import styles from './Room.module.css';
 
@@ -53,6 +54,7 @@ export default function Room() {
   const [payload, setPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showShopModal, setShowShopModal] = useState(false);
 
   useEffect(() => {
     const fetchAllInfo = async () => {
@@ -131,14 +133,49 @@ export default function Room() {
   }
 
   return (
-    <RoomDisplay
-      canvasSize={ROOM_CANVAS_SIZE}
-      profile={scene.profile}
-      room={scene.currentRoom}
-      placedItems={scene.placedItems}
-      pet={scene.currentPet}
-      petTemplate={scene.petTemplate}
-      inventoryCount={scene.inventoryCount}
-    />
+    <>
+      <RoomDisplay
+        canvasSize={ROOM_CANVAS_SIZE}
+        profile={scene.profile}
+        room={scene.currentRoom}
+        placedItems={scene.placedItems}
+        pet={scene.currentPet}
+        petTemplate={scene.petTemplate}
+        inventoryCount={scene.inventoryCount}
+      />
+
+      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999 }}>
+        <button
+          onClick={() => setShowShopModal(true)}
+          style={{
+            background: 'linear-gradient(135deg, #6a5acd, #8a2be2)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '50px',
+            padding: '14px 28px',
+            fontSize: '1.1em',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            boxShadow: '0 6px 20px rgba(106, 90, 205, 0.4)',
+            display: 'flex',
+            alignItem: 'center',
+            gap: '8px',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
+          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 24 }}>storefront</span>
+          Shop Cửa Hàng
+        </button>
+      </div>
+
+      <ShopModal
+        isOpen={showShopModal}
+        onClose={() => setShowShopModal(false)}
+        userInfo={payload}
+        currentRoom={scene.currentRoom}
+      />
+    </>
   );
 }
