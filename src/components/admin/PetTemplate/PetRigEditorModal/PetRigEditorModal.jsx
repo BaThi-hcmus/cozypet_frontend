@@ -623,7 +623,69 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
               </div>
             </div>
 
-            {selectedPart && !isLocked ? (
+            {isLocked ? (
+              <div className={styles.inspectorPanel}>
+                <div className={styles.inspectorHeader}>
+                  <h4>🔍 Cấu hình Tỷ lệ Toàn cục (Global Zoom)</h4>
+                </div>
+                <p className={styles.sectionDesc}>Phòng hiện tại: <strong>{room?.name || activeRoomCode}</strong></p>
+
+                <div className={styles.formGroup}>
+                  <label>Zoom toàn cục ({currentGlobal.zoom.toFixed(2)}x):</label>
+                  <input
+                    type="range"
+                    min="0.3"
+                    max="3"
+                    step="0.05"
+                    value={currentGlobal.zoom}
+                    onChange={(e) =>
+                      setRoomGlobalSettings((prev) => ({
+                        ...prev,
+                        [activeRoomCode]: {
+                          ...currentGlobal,
+                          zoom: parseFloat(e.target.value),
+                        },
+                      }))
+                    }
+                  />
+                  <span>Kéo chuột trên canvas để dịch chuyển tọa độ (globalOffset)</span>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Offset X:</label>
+                  <input
+                    type="number"
+                    value={Math.round(currentGlobal.offset.x)}
+                    onChange={(e) =>
+                      setRoomGlobalSettings((prev) => ({
+                        ...prev,
+                        [activeRoomCode]: {
+                          ...currentGlobal,
+                          offset: { ...currentGlobal.offset, x: Number(e.target.value) || 0 },
+                        },
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Offset Y:</label>
+                  <input
+                    type="number"
+                    value={Math.round(currentGlobal.offset.y)}
+                    onChange={(e) =>
+                      setRoomGlobalSettings((prev) => ({
+                        ...prev,
+                        [activeRoomCode]: {
+                          ...currentGlobal,
+                          offset: { ...currentGlobal.offset, y: Number(e.target.value) || 0 },
+                        },
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            ) : selectedPart ? (
               <div className={styles.inspectorPanel}>
                 <div className={styles.inspectorHeader}>
                   <h4>⚙️ Tinh chỉnh: {PART_LABELS[selectedPart]}</h4>
