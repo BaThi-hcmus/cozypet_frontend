@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import RoomDisplay from '../../../components/client/Room/RoomDisplay';
 import ShopModal from '../../../components/client/Shop/ShopModal';
-import api from '../../../api/api';
+import useRoomStore from '../../../stores/useRoomStore';
 import styles from './Room.module.css';
 
 const ROOM_CANVAS_SIZE = 1000;
@@ -51,26 +51,13 @@ function buildPlacedItems(currentRoom, currentUserRoom, userItems, items) {
 }
 
 export default function Room() {
-  const [payload, setPayload] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showShopModal, setShowShopModal] = useState(false);
-
-  const fetchAllInfo = async () => {
-    try {
-      const response = await api.get('/auth/me');
-      setPayload(response.data.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Không thể tải không gian của bạn');
-      console.error('Room fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { payload, loading, error, fetchRoomData } = useRoomStore();
+  const [showShopModal, setShowShopModal] = React.useState(false);
 
   useEffect(() => {
-    fetchAllInfo();
-  }, []);
+    // Chỉ gọi /auth/me khi vào trang lần đầu hoặc khi F5 (mount component Room)
+    fetchRoomData();
+  }, [fetchRoomData]);
 
   const scene = useMemo(() => {
     if (!payload) return null;
@@ -143,7 +130,6 @@ export default function Room() {
         petTemplate={scene.petTemplate}
         inventoryCount={scene.inventoryCount}
         userInfo={payload}
-        onRefresh={fetchAllInfo}
       />
 
       <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999 }}>

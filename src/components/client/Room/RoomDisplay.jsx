@@ -3,6 +3,7 @@ import styles from './RoomDisplay.module.css';
 import { PetAvatarRig } from '../Pet/PetAvatarRig';
 import ItemReplaceModal from './ItemReplaceModal';
 import api from '../../../api/api';
+import useRoomStore from '../../../stores/useRoomStore';
 import { toast } from 'react-toastify';
 
 const STATUS_META = [
@@ -39,9 +40,9 @@ export default function RoomDisplay({
   petTemplate,
   inventoryCount = 0,
   userInfo = null,
-  onRefresh = () => {},
 }) {
   const [selectedSlotData, setSelectedSlotData] = useState(null);
+  const replaceItemInStore = useRoomStore((state) => state.replaceItemInStore);
 
   if (!room) return null;
 
@@ -77,12 +78,14 @@ export default function RoomDisplay({
 
       await api.post(`/rooms/${userRoomId}/replace-item`, {
         slotKey,
-        insertItemId: toId(newUserItem._id),
+        insertItemId,
       });
+
+      // Cập nhật trực tiếp vào Zustand Store thay vì gọi lại api /auth/me
+      replaceItemInStore(userRoomId, slotKey, insertItemId);
 
       toast.success('Đổi vật phẩm thành công!');
       handleCloseReplaceModal();
-      onRefresh(); // Gọi hàm fetch lại dữ liệu ngầm mà không reload trang
     } catch (err) {
       console.error('Replace item error:', err);
       toast.error(err.response?.data?.message || 'Không thể thay thế vật phẩm');
