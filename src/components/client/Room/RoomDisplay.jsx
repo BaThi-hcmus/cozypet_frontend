@@ -73,14 +73,8 @@ export default function RoomDisplay({
     try {
       const userRoomId = toId(currentUserRoom._id);
       const slotKey = selectedSlotData.slotKey;
-      const insertItemId = toId(newUserItem._id); // Sử dụng userItem._id như backend yêu cầu/hỗ trợ hoặc itemId tùy theo schema decoration
+      const insertItemId = toId(newUserItem._id);
 
-      // Backend route: POST /rooms/:userRoomId/replace-item
-      // Dựa trên controller backend: replaceItemDto { slotKey, insertItemId }
-      // Trong backend client.room.service.ts: [`decorations.${slotKey}`]: new Types.ObjectId(insertItemId)
-      // Thông thường decorations lưu userItem._id hoặc itemId. Kiểm tra xem userItem._id được dùng trong buildPlacedItems.
-      // buildPlacedItems hỗ trợ cả userItem._id và itemId trực tiếp. Ta truyền userItem._id hoặc newItem._id.
-      // Dựa trên code cũ ở admin/client: decorate thường lưu userItem._id.
       await api.post(`/rooms/${userRoomId}/replace-item`, {
         slotKey,
         insertItemId: toId(newUserItem._id),
@@ -88,7 +82,7 @@ export default function RoomDisplay({
 
       toast.success('Đổi vật phẩm thành công!');
       handleCloseReplaceModal();
-      window.location.reload(); // Hoặc gọi callback refresh
+      onRefresh(); // Gọi hàm fetch lại dữ liệu ngầm mà không reload trang
     } catch (err) {
       console.error('Replace item error:', err);
       toast.error(err.response?.data?.message || 'Không thể thay thế vật phẩm');

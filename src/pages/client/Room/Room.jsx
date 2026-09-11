@@ -56,19 +56,19 @@ export default function Room() {
   const [error, setError] = useState(null);
   const [showShopModal, setShowShopModal] = useState(false);
 
-  useEffect(() => {
-    const fetchAllInfo = async () => {
-      try {
-        const response = await api.get('/auth/me');
-        setPayload(response.data.data);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Không thể tải không gian của bạn');
-        console.error('Room fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchAllInfo = async () => {
+    try {
+      const response = await api.get('/auth/me');
+      setPayload(response.data.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Không thể tải không gian của bạn');
+      console.error('Room fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchAllInfo();
   }, []);
 
@@ -142,6 +142,8 @@ export default function Room() {
         pet={scene.currentPet}
         petTemplate={scene.petTemplate}
         inventoryCount={scene.inventoryCount}
+        userInfo={payload}
+        onRefresh={fetchAllInfo}
       />
 
       <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999 }}>
