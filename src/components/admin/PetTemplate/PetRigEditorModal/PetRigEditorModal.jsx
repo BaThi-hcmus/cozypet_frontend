@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styles from './PetRigEditorModal.module.css';
 import { clampPartSize, calcOriginOffset } from '../../../../utils/petAnimations';
+import api from '../../../../api/api';
+import { toast } from 'react-toastify';
+import { useDropzone } from 'react-dropzone';
 
 const PART_LABELS = {
   body: 'Thân',
@@ -20,131 +23,288 @@ const DEFAULT_ORIGINS = [
   { label: 'Trên phải (Top Right)', value: 'top right' },
 ];
 
-function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
-  // imgSrcs nhận vào object chứa url: { head: '...', body: '...', leftArm: '...', ... }
+const ROOM_TABS = [
+  { code: 'LIVING_ROOM', label: '🛋️ Phòng khách' },
+  { code: 'BED_ROOM', label: '🛏️ Phòng ngủ' },
+  { code: 'KITCHEN', label: '🍳 Nhà bếp' },
+];
+
+function toId(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value._id) return String(value._id);
+  return String(value);
+}
+
+function PartUploadRow({ partKey, previewUrl, isSelected, onSelectPart, onUpdatePart, onDeletePart }) {
+  const dropzone = useDropzone({
+    accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
+    maxFiles: 1,
+    onDrop: (files) => {
+      if (files && files.length > 0) {
+        onUpdatePart(partKey, files[0]);
+      }
+    },
+  });
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  return (
+    <div className={`${styles.partUploadRow} ${isSelected ? styles.activeRow : ''}`}>
+      <div
+        className={styles.partRowInfo}
+        onClick={() => {
+          onSelectPart(partKey);
+        }}
+      >
+        <div className={styles.partThumbWrap}>
+          {previewUrl ? (
+            <img src={previewUrl} alt={partKey} className={styles.partThumbImg} />
+          ) : (
+            <span className={styles.emptyThumb}>📷</span>
+          )}
+        </div>
+        <span className={styles.partRowName}>{PART_LABELS[partKey] || partKey}</span>
+        <button
+          type="button"
+          className={styles.dropdownToggleBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            setDropdownOpen(!dropdownOpen);
+          }}
+          title="Tùy chọn ảnh"
+        >
+          ⚙️
+        </button>
+      </div>
+
+      {dropdownOpen && (
+        <div className={styles.partDropdownActions}>
+          <div {...dropzone.getRootProps()} className={styles.dropdownActionItem}>
+            <input {...dropzone.getInputProps()} />
+            <span>🔄 Thay thế ảnh</span>
+          </div>
+          {previewUrl && (
+            <div
+              className={`${styles.dropdownActionItem} ${styles.deleteAction}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeletePart(partKey);
+                setDropdownOpen(false);
+              }}
+            >
+              <span>🗑️ Xóa ảnh</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomConfigsInitial = {}, onConfirm }) {
   const canvasRef = useRef(null);
 
-  // Trạng thái cấu hình cho từng bộ phận (Tọa độ x, y tính trên khung logical 1000x1000)
-  const [partsConfig, setPartsConfig] = useState({
-    body: { x: 350, y: 350, scale: 1, rotation: 0, zIndex: 2, transformOrigin: 'center' },
-    head: { x: 350, y: 150, scale: 1, rotation: 0, zIndex: 3, transformOrigin: 'bottom center' },
-    leftArm: { x: 250, y: 320, scale: 1, rotation: 0, zIndex: 1, transformOrigin: 'top center' },
-    rightArm: { x: 480, y: 320, scale: 1, rotation: 0, zIndex: 4, transformOrigin: 'top center' },
-    leftLeg: { x: 300, y: 580, scale: 1, rotation: 0, zIndex: 0, transformOrigin: 'top center' },
-    rightLeg: { x: 450, y: 580, scale: 1, rotation: 0, zIndex: 0, transformOrigin: 'top center' },
-    tail: { x: 550, y: 400, scale: 1, rotation: 0, zIndex: -1, transformOrigin: 'left center' },
+  // Tab phòng hiện tại: LIVING_ROOM, BED_ROOM, KITCHEN
+  const [activeRoomCode, setActiveRoomCode] = useState('LIVING_ROOM');
+  const [roomDataMap, setRoomDataMap] = useState({}); // { LIVING_ROOM: { room, items }, ... }
+  const [loadingRoom, setLoadingRoom] = useState(false);
+
+  // Cấu hình layers cho từng phòng riêng biệt
+  const [roomLayers, setRoomLayers] = useState({
+    LIVING_ROOM: {
+      body: { x: 350, y: 350, scale: 1, rotation: 0, zIndex: 2, transformOrigin: 'center', url: imgSrcs.body || '' },
+      head: { x: 350, y: 150, scale: 1, rotation: 0, zIndex: 3, transformOrigin: 'bottom center', url: imgSrcs.head || '' },
+      leftArm: { x: 250, y: 320, scale: 1, rotation: 0, zIndex: 1, transformOrigin: 'top center', url: imgSrcs.leftArm || '' },
+      rightArm: { x: 480, y: 320, scale: 1, rotation: 0, zIndex: 4, transformOrigin: 'top center', url: imgSrcs.rightArm || '' },
+      leftLeg: { x: 300, y: 580, scale: 1, rotation: 0, zIndex: 0, transformOrigin: 'top center', url: imgSrcs.leftLeg || '' },
+      rightLeg: { x: 450, y: 580, scale: 1, rotation: 0, zIndex: 0, transformOrigin: 'top center', url: imgSrcs.rightLeg || '' },
+      tail: { x: 550, y: 400, scale: 1, rotation: 0, zIndex: -1, transformOrigin: 'left center', url: imgSrcs.tail || '' },
+    },
+    BED_ROOM: {
+      body: { x: 350, y: 350, scale: 1, rotation: 0, zIndex: 2, transformOrigin: 'center', url: imgSrcs.body || '' },
+      head: { x: 350, y: 150, scale: 1, rotation: 0, zIndex: 3, transformOrigin: 'bottom center', url: imgSrcs.head || '' },
+      leftArm: { x: 250, y: 320, scale: 1, rotation: 0, zIndex: 1, transformOrigin: 'top center', url: imgSrcs.leftArm || '' },
+      rightArm: { x: 480, y: 320, scale: 1, rotation: 0, zIndex: 4, transformOrigin: 'top center', url: imgSrcs.rightArm || '' },
+      leftLeg: { x: 300, y: 580, scale: 1, rotation: 0, zIndex: 0, transformOrigin: 'top center', url: imgSrcs.leftLeg || '' },
+      rightLeg: { x: 450, y: 580, scale: 1, rotation: 0, zIndex: 0, transformOrigin: 'top center', url: imgSrcs.rightLeg || '' },
+      tail: { x: 550, y: 400, scale: 1, rotation: 0, zIndex: -1, transformOrigin: 'left center', url: imgSrcs.tail || '' },
+    },
+    KITCHEN: {
+      body: { x: 350, y: 350, scale: 1, rotation: 0, zIndex: 2, transformOrigin: 'center', url: imgSrcs.body || '' },
+      head: { x: 350, y: 150, scale: 1, rotation: 0, zIndex: 3, transformOrigin: 'bottom center', url: imgSrcs.head || '' },
+      leftArm: { x: 250, y: 320, scale: 1, rotation: 0, zIndex: 1, transformOrigin: 'top center', url: imgSrcs.leftArm || '' },
+      rightArm: { x: 480, y: 320, scale: 1, rotation: 0, zIndex: 4, transformOrigin: 'top center', url: imgSrcs.rightArm || '' },
+      leftLeg: { x: 300, y: 580, scale: 1, rotation: 0, zIndex: 0, transformOrigin: 'top center', url: imgSrcs.leftLeg || '' },
+      rightLeg: { x: 450, y: 580, scale: 1, rotation: 0, zIndex: 0, transformOrigin: 'top center', url: imgSrcs.rightLeg || '' },
+      tail: { x: 550, y: 400, scale: 1, rotation: 0, zIndex: -1, transformOrigin: 'left center', url: imgSrcs.tail || '' },
+    },
+  });
+
+  // Lưu trữ các file bộ phận mới upload theo phòng: { LIVING_ROOM: { head: File, ... }, ... }
+  const [roomPartFiles, setRoomPartFiles] = useState({
+    LIVING_ROOM: {},
+    BED_ROOM: {},
+    KITCHEN: {},
+  });
+
+  // Zoom và offset tổng thể cho từng phòng
+  const [roomGlobalSettings, setRoomGlobalSettings] = useState({
+    LIVING_ROOM: { zoom: 1, offset: { x: 0, y: 0 } },
+    BED_ROOM: { zoom: 1, offset: { x: 0, y: 0 } },
+    KITCHEN: { zoom: 1, offset: { x: 0, y: 0 } },
   });
 
   const [loadedImages, setLoadedImages] = useState({});
-  // bộ phận đang được chọn
   const [selectedPart, setSelectedPart] = useState(null);
-  // có khóa toàn bộ các bộ phận hay không
-  const [isLocked, setIsLocked] = useState(false);
-  // zoom tổng thể
-  const [globalZoom, setGlobalZoom] = useState(1);
-  // độ dịch chuyển tổng thể
-  const [globalOffset, setGlobalOffset] = useState({ x: 0, y: 0 });
-  const [warningMessage, setWarningMessage] = useState('');
+  const [isLocked, setIsLocked] = useState(false); // Khóa chỉnh từng part để kéo toàn con pet
 
-  // Trạng thái kéo thả chuột
+  // Trạng thái kéo thả chuột trên Canvas
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // Load tất cả hình ảnh từ imgSrcs khi mở modal
+  // Khởi tạo dữ liệu từ props khi mở modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (roomConfigsInitial && Object.keys(roomConfigsInitial).length > 0) {
+      const newLayersMap = { ...roomLayers };
+      const newSettingsMap = { ...roomGlobalSettings };
+
+      Object.entries(roomConfigsInitial).forEach(([code, cfg]) => {
+        if (cfg.layers) {
+          newLayersMap[code] = { ...cfg.layers };
+        }
+        if (cfg.globalZoom !== undefined || cfg.globalOffset !== undefined) {
+          newSettingsMap[code] = {
+            zoom: cfg.globalZoom ?? 1,
+            offset: cfg.globalOffset ?? { x: 0, y: 0 },
+          };
+        }
+      });
+
+      setRoomLayers(newLayersMap);
+      setRoomGlobalSettings(newSettingsMap);
+    } else if (imgSrcs && Object.keys(imgSrcs).length > 0) {
+      setRoomLayers((prev) => {
+        const updated = { ...prev };
+        ['LIVING_ROOM', 'BED_ROOM', 'KITCHEN'].forEach((code) => {
+          const roomPart = { ...updated[code] };
+          Object.keys(imgSrcs).forEach((k) => {
+            if (roomPart[k]) {
+              roomPart[k] = { ...roomPart[k], url: imgSrcs[k] };
+            }
+          });
+          updated[code] = roomPart;
+        });
+        return updated;
+      });
+    }
+  }, [isOpen, roomConfigsInitial, imgSrcs]);
+
+  // Load thông tin phòng và item default qua API /admin/rooms/:roomCode
+  useEffect(() => {
+    if (!isOpen) return;
+    if (roomDataMap[activeRoomCode]) return;
+
+    const fetchRoom = async () => {
+      try {
+        setLoadingRoom(true);
+        const res = await api.get(`/admin/rooms/${activeRoomCode}`);
+        setRoomDataMap((prev) => ({
+          ...prev,
+          [activeRoomCode]: res.data.data, // { room, items }
+        }));
+      } catch (err) {
+        console.error('Fetch room error:', err);
+        toast.error(`Không thể tải thông tin phòng ${activeRoomCode}`);
+      } finally {
+        setLoadingRoom(false);
+      }
+    };
+
+    fetchRoom();
+  }, [isOpen, activeRoomCode]);
+
+  const currentPartsConfig = roomLayers[activeRoomCode] || {};
+  const currentGlobal = roomGlobalSettings[activeRoomCode] || { zoom: 1, offset: { x: 0, y: 0 } };
+  const currentRoomInfo = roomDataMap[activeRoomCode];
+  const room = currentRoomInfo?.room;
+  const items = currentRoomInfo?.items || [];
+
+  // Load tất cả hình ảnh bộ phận của phòng hiện tại vào Image object
   useEffect(() => {
     if (!isOpen) return;
     const images = {};
     let loadedCount = 0;
-    const keys = Object.keys(imgSrcs).filter((key) => imgSrcs[key]); // Chỉ load các part có URL hợp lệ
+    const parts = currentPartsConfig;
+    const keys = Object.keys(parts).filter((k) => parts[k]?.url);
 
-    if (keys.length === 0) return;
+    if (keys.length === 0) {
+      setLoadedImages({});
+      return;
+    }
 
     keys.forEach((key) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.src = imgSrcs[key];
+      img.src = parts[key].url;
       img.onload = () => {
         images[key] = img;
         loadedCount++;
-        if (loadedCount === keys.length) {
-          setLoadedImages({ ...images });
-        }
+        if (loadedCount === keys.length) setLoadedImages({ ...images });
       };
       img.onerror = () => {
         loadedCount++;
-        if (loadedCount === keys.length) {
-          setLoadedImages({ ...images });
-        }
+        if (loadedCount === keys.length) setLoadedImages({ ...images });
       };
     });
-  }, [isOpen, imgSrcs]);
+  }, [isOpen, activeRoomCode, roomLayers]);
 
-  // Vẽ lại Canvas mỗi khi config, ảnh hoặc lựa chọn thay đổi
-  // kiểm tra xem ảnh có vượt ngoài khung canvas không
+  // Vẽ Canvas mỗi khi thay đổi
   useEffect(() => {
     drawCanvas();
-    checkBoundaries();
-  }, [partsConfig, loadedImages, selectedPart, isLocked, globalZoom, globalOffset]);
+  }, [currentPartsConfig, loadedImages, selectedPart, isLocked, currentGlobal, roomDataMap]);
 
   const drawCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // Logical size: 1000x1000
     canvas.width = 1000;
     canvas.height = 1000;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Vẽ nền dạng lưới caro nhẹ hoặc trắng sáng
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // áp dụng các biến đổi toàn cục
     ctx.save();
-    ctx.translate(globalOffset.x, globalOffset.y); // Dịch chuyển cả con pet khi kéo chuột
-    ctx.scale(globalZoom, globalZoom); // Zoom toàn bộ canvas/con pet
+    ctx.translate(currentGlobal.offset.x, currentGlobal.offset.y);
+    ctx.scale(currentGlobal.zoom, currentGlobal.zoom);
 
-    // Sắp xếp các bộ phận theo zIndex để vẽ lớp nào lên trước/sau
-    const sortedParts = Object.keys(partsConfig).sort(
-      (a, b) => (partsConfig[a].zIndex || 0) - (partsConfig[b].zIndex || 0)
+    const sortedParts = Object.keys(currentPartsConfig).sort(
+      (a, b) => (currentPartsConfig[a].zIndex || 0) - (currentPartsConfig[b].zIndex || 0)
     );
 
-    // vẽ từng bộ phận
     sortedParts.forEach((key) => {
       const img = loadedImages[key];
-      const config = partsConfig[key];
-      if (!img) return;
+      const config = currentPartsConfig[key];
+      if (!img || !config) return;
 
       ctx.save();
-
-      // Dịch chuyển đến vị trí bộ phận + áp dụng zoom global
-      const drawX = config.x;
-      const drawY = config.y;
-      ctx.translate(drawX, drawY);
-
-      // xoay part (đổi sang đơn vị radian)
+      ctx.translate(config.x, config.y);
       ctx.rotate((config.rotation * Math.PI) / 180);
 
-      // Lấy kích thước gốc của bộ phận và chuẩn hoá, mỗi bộ phận tối đa 800px
       const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
       const w = clamped.w;
       const h = clamped.h;
-
-      // Căn chỉnh tâm vẽ dựa theo transformOrigin mô phỏng (dùng để rotate)
       const { ox, oy } = calcOriginOffset(w, h, config.transformOrigin);
 
-      // vẽ theo rotate và chiều cao/ chiều rộng (đã scale)
       ctx.drawImage(img, -ox, -oy, w * config.scale, h * config.scale);
 
-      // Vẽ khung chữ nhật nhận diện (Bounding box) nếu được chọn hoặc đang mở khóa
       if (!isLocked) {
-        ctx.strokeStyle = key === selectedPart ? '#3b82f6' : '#cbd5e1'; // màu
-        ctx.lineWidth = key === selectedPart ? 3 : 1.5; // độ đậm của nét vẽ
-        ctx.strokeRect(-ox, -oy, w * config.scale, h * config.scale); // vẽ mép khung chữ nhật (có rotate)
+        ctx.strokeStyle = key === selectedPart ? '#2563eb' : '#cbd5e1';
+        ctx.lineWidth = key === selectedPart ? 3 : 1.5;
+        ctx.strokeRect(-ox, -oy, w * config.scale, h * config.scale);
 
-        // Vẽ tên bộ phận nhỏ trên đầu khung
         ctx.fillStyle = key === selectedPart ? '#1d4ed8' : '#64748b';
         ctx.font = '14px sans-serif';
         ctx.fillText(PART_LABELS[key] || key, -ox, -oy - 8);
@@ -155,137 +315,57 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
     ctx.restore();
   };
 
-  // Kiểm tra tràn viền khung canvas 1000x1000
-  // Kiểm tra tràn viền chuẩn xác dựa trên kích thước thực tế của part (Bounding Box)
-  const checkBoundaries = () => {
-    let outOfBounds = [];
+  // Xử lý cập nhật / thay thế / xóa ảnh bộ phận
+  const handleUpdatePartImage = (partKey, file) => {
+    const previewUrl = URL.createObjectURL(file);
+    setRoomPartFiles((prev) => ({
+      ...prev,
+      [activeRoomCode]: {
+        ...prev[activeRoomCode],
+        [partKey]: file,
+      },
+    }));
 
-    Object.keys(partsConfig).forEach((key) => {
-      const config = partsConfig[key];
-      const img = loadedImages[key];
-      if (!img) return;
-
-      // Tính kích thước thực tế sau khi scale
-      const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
-      const finalW = clamped.w * config.scale;
-      const finalH = clamped.h * config.scale;
-
-      // Lấy khoảng cách từ điểm neo đến các mép của ảnh gốc
-      const { ox, oy } = calcOriginOffset(finalW, finalH, config.transformOrigin);
-
-      // Tọa độ tuyệt đối của điểm neo trên canvas 1000x1000
-      const absX = config.x + globalOffset.x;
-      const absY = config.y + globalOffset.y;
-
-      // góc của hình chữ nhật tính tương đối so với điểm neo (ox, oy)
-      // Góc trái-trên, phải-trên, trái-dưới, phải-dưới
-      // xét trong hệ qui chiếu tấm ảnh với góc tọa độ (0,0) là điểm neo
-      const localCorners = [
-        { x: -ox, y: -oy },                    // Top-Left
-        { x: -ox + finalW, y: -oy },          // Top-Right
-        { x: -ox, y: -oy + finalH },          // Bottom-Left
-        { x: -ox + finalW, y: -oy + finalH }  // Bottom-Right
-      ];
-
-      // Đổi góc rotation sang Radian
-      const rad = (config.rotation * Math.PI) / 180;
-      // tính cos và sin ứng với rotation hiện tại
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-
-      let minX = Infinity, maxX = -Infinity;
-      let minY = Infinity, maxY = -Infinity;
-
-      // Xoay từng góc và dịch chuyển về tọa độ canvas để tìm biên min/max thực tế
-      localCorners.forEach(corner => {
-        // Công thức xoay 2D quanh điểm neo (0,0)
-        const rx = corner.x * cos - corner.y * sin;
-        const ry = corner.x * sin + corner.y * cos;
-
-        // Cộng thêm vị trí tuyệt đối trên canvas
-        const canvasX = absX + rx;
-        const canvasY = absY + ry;
-
-        // lấy bouding box bao quanh 4 góc
-        if (canvasX < minX) minX = canvasX;
-        if (canvasX > maxX) maxX = canvasX;
-        if (canvasY < minY) minY = canvasY;
-        if (canvasY > maxY) maxY = canvasY;
-      });
-
-      // Kiểm tra xem 4 biên thực tế có bị lấn ra ngoài [0, 1000] của canvas không
-      const isOutOfBounds = minX < 0 || maxX > 1000 || minY < 0 || maxY > 1000;
-
-      if (isOutOfBounds) {
-        outOfBounds.push(PART_LABELS[key] || key);
-      }
+    setRoomLayers((prev) => {
+      const roomPart = prev[activeRoomCode];
+      return {
+        ...prev,
+        [activeRoomCode]: {
+          ...roomPart,
+          [partKey]: {
+            ...roomPart[partKey],
+            url: previewUrl,
+          },
+        },
+      };
     });
-
-    if (outOfBounds.length > 0) {
-      setWarningMessage(`⚠️ Cảnh báo: Các bộ phận sau đang bị tràn ra ngoài khung canvas: ${outOfBounds.join(', ')}`);
-    } else {
-      setWarningMessage('');
-    }
+    setSelectedPart(partKey); // Focus ngay vào part vừa cập nhật
+    toast.success(`Đã cập nhật ảnh bộ phận [${PART_LABELS[partKey]}] cho phòng ${activeRoomCode}`);
   };
 
-  // Kiểm tra sự kiện chuột trên Canvas để kéo thả bộ phận hoặc kéo toàn con pet
-  // const handleMouseDown = (e) => {
-  //   const canvas = canvasRef.current;
-  //   if (!canvas) return;
-  //   // lấy thông tin khung canvas hiển thị trên UI (trong hệ quy chiếu viewport)
-  //   const rect = canvas.getBoundingClientRect();
+  const handleDeletePartImage = (partKey) => {
+    setRoomLayers((prev) => {
+      const roomPart = prev[activeRoomCode];
+      return {
+        ...prev,
+        [activeRoomCode]: {
+          ...roomPart,
+          [partKey]: {
+            ...roomPart[partKey],
+            url: '',
+          },
+        },
+      };
+    });
+    if (selectedPart === partKey) setSelectedPart(null);
+    toast.success(`Đã xóa ảnh bộ phận [${PART_LABELS[partKey]}]`);
+  };
 
-  //   // Chuyển đổi tọa độ client sang tọa độ canvas 1000x1000
-  //   const scaleX = canvas.width / rect.width;
-  //   const scaleY = canvas.height / rect.height;
-  //   // tọa độ click xét trong hệ quy chiếu pet
-  //   const rawX = (e.clientX - rect.left) * scaleX;
-  //   const rawY = (e.clientY - rect.top) * scaleY;
-
-  //   setIsDragging(true);
-  //   setDragStart({ x: rawX, y: rawY }); // tọa độ trong khung canvas 1000x1000
-
-  //   if (!isLocked) {
-  //     // Khi isLocked = false, hệ thống vẽ có áp dụng globalOffset, 
-  //     // nên tọa độ check click cũng phải quy đổi ngược lại về hệ quy chiếu nội bộ của pet.
-  //     const x = rawX - globalOffset.x;
-  //     const y = rawY - globalOffset.y;
-
-  //     // Tìm xem click vào bộ phận nào (quét từ lớp trên cùng xuống dưới nhờ .reverse())
-  //     const clickedKey = Object.keys(partsConfig).reverse().find((key) => {
-  //       const conf = partsConfig[key];
-  //       const img = loadedImages[key];
-  //       if (!img) return false;
-
-  //       // Tính kích thước sau khi scale (đồng bộ giới hạn MAX_PART_SIZE như hàm vẽ)
-  //       const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
-  //       const finalW = clamped.w * conf.scale;
-  //       const finalH = clamped.h * conf.scale;
-
-  //       // Xác định tâm neo
-  //       const { ox, oy } = calcOriginOffset(finalW, finalH, conf.transformOrigin);
-
-  //       // Xác định bounding box chuẩn xác theo tâm neo đã tính
-  //       const minX = conf.x - ox;
-  //       const maxX = conf.x - ox + finalW;
-  //       const minY = conf.y - oy;
-  //       const maxY = conf.y - oy + finalH;
-
-  //       return x >= minX && x <= maxX && y >= minY && y <= maxY;
-  //     });
-
-  //     if (clickedKey) {
-  //       setSelectedPart(clickedKey);
-  //     }
-  //   }
-  // };
-
-  // lưu tọa độ click chuột và kiểm tra xem có click vào part nào không
+  // Kéo thả chuột
   const handleMouseDown = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const rawX = (e.clientX - rect.left) * scaleX;
@@ -295,97 +375,36 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
     setDragStart({ x: rawX, y: rawY });
 
     if (!isLocked) {
-      const x = rawX - globalOffset.x;
-      const y = rawY - globalOffset.y;
+      const x = rawX - currentGlobal.offset.x;
+      const y = rawY - currentGlobal.offset.y;
 
-      // Tìm xem click vào bộ phận nào (ưu tiên lớp trên cùng trước)
-      const sortedKeys = Object.keys(partsConfig).sort(
-        (a, b) => (partsConfig[b].zIndex || 0) - (partsConfig[a].zIndex || 0)
+      const sortedKeys = Object.keys(currentPartsConfig).sort(
+        (a, b) => (currentPartsConfig[b].zIndex || 0) - (currentPartsConfig[a].zIndex || 0)
       );
 
       let clickedKey = null;
-      let hitCanvas = null;
-      let hitCtx = null;
-
       for (const key of sortedKeys) {
-        const conf = partsConfig[key];
+        const conf = currentPartsConfig[key];
         const img = loadedImages[key];
-        if (!img) continue;
+        if (!img || !conf?.url) continue;
 
         const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
         const finalW = clamped.w * conf.scale;
         const finalH = clamped.h * conf.scale;
         const { ox, oy } = calcOriginOffset(finalW, finalH, conf.transformOrigin);
 
-        // --- BƯỚC 1: TÍNH TOÁN HIT TEST BOUNDING BOX (nhanh & an toàn) ---
-        const absX = conf.x;
-        const absY = conf.y;
+        const minX = conf.x - ox;
+        const maxX = conf.x - ox + finalW;
+        const minY = conf.y - oy;
+        const maxY = conf.y - oy + finalH;
 
-        const localCorners = [
-          { x: -ox, y: -oy },
-          { x: -ox + finalW, y: -oy },
-          { x: -ox, y: -oy + finalH },
-          { x: -ox + finalW, y: -oy + finalH }
-        ];
-
-        const rad = (conf.rotation * Math.PI) / 180;
-        const cos = Math.cos(rad);
-        const sin = Math.sin(rad);
-
-        let minX = Infinity, maxX = -Infinity;
-        let minY = Infinity, maxY = -Infinity;
-
-        localCorners.forEach(corner => {
-          const rx = corner.x * cos - corner.y * sin;
-          const ry = corner.x * sin + corner.y * cos;
-          const cornerX = absX + rx;
-          const cornerY = absY + ry;
-          if (cornerX < minX) minX = cornerX;
-          if (cornerX > maxX) maxX = cornerX;
-          if (cornerY < minY) minY = cornerY;
-          if (cornerY > maxY) maxY = cornerY;
-        });
-
-        const inBox = x >= minX && x <= maxX && y >= minY && y <= maxY;
-        if (!inBox) continue; // Bỏ qua ngay nếu không nằm trong Box
-
-        // --- BƯỚC 2: PIXEL-PERFECT TEST (chính xác) ---
-        if (!hitCanvas) {
-          hitCanvas = document.createElement('canvas');
-          hitCanvas.width = canvas.width;
-          hitCanvas.height = canvas.height;
-          hitCtx = hitCanvas.getContext('2d', { willReadFrequently: true });
-        } else {
-          hitCtx.clearRect(0, 0, hitCanvas.width, hitCanvas.height);
-        }
-
-        hitCtx.save();
-        hitCtx.translate(globalOffset.x, globalOffset.y);
-        hitCtx.translate(conf.x, conf.y);
-        hitCtx.scale(globalZoom, globalZoom);
-        hitCtx.rotate((conf.rotation * Math.PI) / 180);
-
-        hitCtx.drawImage(img, -ox, -oy, clamped.w * conf.scale, clamped.h * conf.scale);
-        hitCtx.restore();
-
-        try {
-          const pixel = hitCtx.getImageData(rawX, rawY, 1, 1).data;
-          // Kiểm tra kênh Alpha (độ mờ), > 10 là click trúng phần nhìn thấy
-          if (pixel[3] > 10) {
-            clickedKey = key;
-            break;
-          }
-        } catch (err) {
-          // Bị lỗi CORS (trình duyệt chặn đọc pixel từ ảnh cross-origin)
-          // -> Chấp nhận luôn hit bằng Bounding Box
+        if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
           clickedKey = key;
           break;
         }
       }
 
-      if (clickedKey) {
-        setSelectedPart(clickedKey);
-      }
+      if (clickedKey) setSelectedPart(clickedKey);
     }
   };
 
@@ -403,121 +422,217 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
     const dy = y - dragStart.y;
 
     if (isLocked) {
-      // Kéo dịch toàn con pet
-      setGlobalOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
-    } else if (selectedPart) {
-      // Kéo dịch riêng bộ phận đang chọn
-      setPartsConfig((prev) => ({
+      setRoomGlobalSettings((prev) => ({
         ...prev,
-        [selectedPart]: {
-          ...prev[selectedPart],
-          x: prev[selectedPart].x + dx,
-          y: prev[selectedPart].y + dy,
+        [activeRoomCode]: {
+          ...currentGlobal,
+          offset: { x: currentGlobal.offset.x + dx, y: currentGlobal.offset.y + dy },
         },
       }));
+    } else if (selectedPart) {
+      setRoomLayers((prev) => {
+        const roomPart = prev[activeRoomCode];
+        return {
+          ...prev,
+          [activeRoomCode]: {
+            ...roomPart,
+            [selectedPart]: {
+              ...roomPart[selectedPart],
+              x: roomPart[selectedPart].x + dx,
+              y: roomPart[selectedPart].y + dy,
+            },
+          },
+        };
+      });
     }
 
     setDragStart({ x, y });
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+  const handleMouseUp = () => setIsDragging(false);
 
-  // Cập nhật thông số của bộ phận đang chọn từ bảng điều khiển bên phải
   const handleParamChange = (field, value) => {
     if (!selectedPart) return;
-    setPartsConfig((prev) => ({
-      ...prev,
-      [selectedPart]: {
-        ...prev[selectedPart],
-        [field]: Number(value) || value,
-      },
-    }));
+    setRoomLayers((prev) => {
+      const roomPart = prev[activeRoomCode];
+      return {
+        ...prev,
+        [activeRoomCode]: {
+          ...roomPart,
+          [selectedPart]: {
+            ...roomPart[selectedPart],
+            [field]: Number(value) || value,
+          },
+        },
+      };
+    });
   };
 
   const handleSave = () => {
-    // Bổ sung thêm url cho từng part dựa trên imgSrcs ban đầu truyền vào
-    const enrichedLayers = {};
-    Object.keys(partsConfig).forEach((key) => {
-      enrichedLayers[key] = {
-        ...partsConfig[key],
-        url: imgSrcs[key] || partsConfig[key].url || '', // Gắn trực tiếp url ảnh
+    const finalRoomConfigs = {};
+    ['LIVING_ROOM', 'BED_ROOM', 'KITCHEN'].forEach((code) => {
+      finalRoomConfigs[code] = {
+        layers: roomLayers[code],
+        globalZoom: roomGlobalSettings[code].zoom,
+        globalOffset: roomGlobalSettings[code].offset,
       };
     });
 
     onConfirm({
-      layers: enrichedLayers,
-      globalZoom,
-      globalOffset
+      roomConfigs: finalRoomConfigs,
+      roomPartFiles,
     });
     onClose();
+    toast.success('Đã lưu cấu hình pet hoàn chỉnh cho tất cả các phòng!');
   };
 
   if (!isOpen) return null;
+
+  const placedItems = (() => {
+    if (!room || !room.slots) return [];
+    const itemMap = new Map(items.map((item) => [toId(item._id), item]));
+    const placed = [];
+    Object.entries(room.slots).forEach(([slotKey, slot]) => {
+      if (!slot) return;
+      let item = null;
+      if (slot.defaultItemId) item = itemMap.get(toId(slot.defaultItemId));
+      if (!item) return;
+      placed.push({ slotKey, slot, item });
+    });
+    return placed.sort((a, b) => (a.slot.zIndex || 0) - (b.slot.zIndex || 0));
+  })();
 
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalContainer}>
         {/* Header */}
         <div className={styles.modalHeader}>
-          <h3>🎨 Trình chỉnh sửa lắp ráp Rigging 2D (Visual Rigging Editor)</h3>
+          <h3>🎨 Trình Ráp nối & Cấu hình Pet theo Phòng (Visual Rigging Editor)</h3>
           <div className={styles.headerActions}>
             <button
               type="button"
               className={`${styles.btnLock} ${isLocked ? styles.locked : ''}`}
               onClick={() => setIsLocked(!isLocked)}
             >
-              {isLocked ? '🔒 Đã khóa bộ phận (Đang dịch chuyển cả con)' : '🔓 Đang mở khóa (Chỉnh từng bộ phận)'}
+              {isLocked ? '🔒 Khóa từng bộ phận (Đang di chuyển cả con)' : '🔓 Mở khóa (Chỉnh từng bộ phận)'}
             </button>
             <button type="button" onClick={onClose} className={styles.btnClose}>×</button>
           </div>
         </div>
 
-        {/* Layout 2 cột: 3/5 và 2/5 */}
+        {/* Tab chọn phòng */}
+        <div className={styles.roomTabs}>
+          {ROOM_TABS.map((tab) => (
+            <button
+              key={tab.code}
+              type="button"
+              className={`${styles.roomTabButton} ${activeRoomCode === tab.code ? styles.active : ''}`}
+              onClick={() => {
+                setActiveRoomCode(tab.code);
+                setSelectedPart(null); // Reset focus khi đổi phòng
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Main Body */}
         <div className={styles.modalBody}>
-          {/* Cột trái (3/5): Canvas Workspace */}
+          {/* Cột trái: Canvas hiển thị Room trực quan + Pet */}
           <div className={styles.canvasColumn}>
             <div className={styles.canvasToolbar}>
-              <span>💡 Mẹo: Click chọn bộ phận trên khung hoặc danh sách để tinh chỉnh. Kéo thả chuột để dịch chuyển.</span>
+              <span>💡 Mẹo: Click vào part trên danh sách bên phải hoặc trực tiếp trên canvas để focus và chỉnh thông số.</span>
               <div className={styles.zoomControl}>
-                <label>Zoom toàn cục:</label>
+                <label>Zoom:</label>
                 <input
                   type="range"
                   min="0.5"
                   max="2"
                   step="0.1"
-                  value={globalZoom}
-                  onChange={(e) => setGlobalZoom(parseFloat(e.target.value))}
+                  value={currentGlobal.zoom}
+                  onChange={(e) =>
+                    setRoomGlobalSettings((prev) => ({
+                      ...prev,
+                      [activeRoomCode]: { ...currentGlobal, zoom: parseFloat(e.target.value) },
+                    }))
+                  }
                 />
-                <span>{globalZoom.toFixed(1)}x</span>
+                <span>{currentGlobal.zoom.toFixed(1)}x</span>
               </div>
             </div>
 
             <div className={styles.canvasWrapper}>
-              {warningMessage && <div className={styles.warningBanner}>{warningMessage}</div>}
-              <canvas
-                ref={canvasRef}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                className={styles.rigCanvas}
-              />
+              <div className={styles.roomCanvasContainer}>
+                {room && room.background_url && (
+                  <img src={room.background_url} alt={room.name} className={styles.roomBgImage} draggable={false} />
+                )}
+                {placedItems.map(({ slotKey, slot, item }) => {
+                  const scaleFactor = slot.scaleFactor || 1;
+                  return (
+                    <div
+                      key={slotKey}
+                      className={styles.itemSlot}
+                      style={{
+                        left: `${(slot.x / 1000) * 100}%`,
+                        top: `${(slot.y / 1000) * 100}%`,
+                        width: `${scaleFactor * 100}%`,
+                        height: `${scaleFactor * 100}%`,
+                        zIndex: slot.zIndex || 1,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      <img src={item.image} alt={item.name} className={styles.itemSlotImg} draggable={false} />
+                    </div>
+                  );
+                })}
+
+                <canvas
+                  ref={canvasRef}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  className={styles.rigCanvasOverlay}
+                  style={{ zIndex: 100 }}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Cột phải (2/5): Danh sách bộ phận hoặc Bảng thông số (Inspector) */}
+          {/* Cột phải: Quản lý 7 bộ phận (dropdown thay thế/xóa) + Bảng thông số */}
           <div className={styles.sidebarColumn}>
+            <div className={styles.partsManagementSection}>
+              <h4>🧩 Quản lý bộ phận ({room?.name || activeRoomCode})</h4>
+              <p className={styles.sectionDesc}>Click vào dòng bộ phận để chọn/focus chỉnh sửa hoặc mở cấu hình ảnh.</p>
+
+              <div className={styles.partsListDropdown}>
+                {['head', 'body', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg', 'tail'].map((partKey) => (
+                  <PartUploadRow
+                    key={partKey}
+                    partKey={partKey}
+                    previewUrl={currentPartsConfig[partKey]?.url}
+                    isSelected={selectedPart === partKey}
+                    onSelectPart={(key) => {
+                      setSelectedPart(key);
+                      setIsLocked(false);
+                    }}
+                    onUpdatePart={handleUpdatePartImage}
+                    onDeletePart={handleDeletePartImage}
+                  />
+                ))}
+              </div>
+            </div>
+
             {selectedPart && !isLocked ? (
               <div className={styles.inspectorPanel}>
                 <div className={styles.inspectorHeader}>
-                  <h4>⚙️ Tùy chỉnh: {PART_LABELS[selectedPart]}</h4>
+                  <h4>⚙️ Tinh chỉnh: {PART_LABELS[selectedPart]}</h4>
                   <button
                     type="button"
                     className={styles.btnBackToList}
                     onClick={() => setSelectedPart(null)}
                   >
-                    ⬅ Về danh sách
+                    ⬅ Đóng
                   </button>
                 </div>
 
@@ -525,7 +640,7 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
                   <label>Tọa độ X:</label>
                   <input
                     type="number"
-                    value={Math.round(partsConfig[selectedPart]?.x || 0)}
+                    value={Math.round(currentPartsConfig[selectedPart]?.x || 0)}
                     onChange={(e) => handleParamChange('x', e.target.value)}
                   />
                 </div>
@@ -534,22 +649,22 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
                   <label>Tọa độ Y:</label>
                   <input
                     type="number"
-                    value={Math.round(partsConfig[selectedPart]?.y || 0)}
+                    value={Math.round(currentPartsConfig[selectedPart]?.y || 0)}
                     onChange={(e) => handleParamChange('y', e.target.value)}
                   />
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Độ phóng đại (Scale):</label>
+                  <label>Phóng đại (Scale):</label>
                   <input
                     type="range"
                     min="0.2"
                     max="3"
                     step="0.05"
-                    value={partsConfig[selectedPart]?.scale || 1}
+                    value={currentPartsConfig[selectedPart]?.scale || 1}
                     onChange={(e) => handleParamChange('scale', e.target.value)}
                   />
-                  <span>{partsConfig[selectedPart]?.scale}</span>
+                  <span>{currentPartsConfig[selectedPart]?.scale}</span>
                 </div>
 
                 <div className={styles.formGroup}>
@@ -559,17 +674,17 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
                     min="-180"
                     max="180"
                     step="1"
-                    value={partsConfig[selectedPart]?.rotation || 0}
+                    value={currentPartsConfig[selectedPart]?.rotation || 0}
                     onChange={(e) => handleParamChange('rotation', e.target.value)}
                   />
-                  <span>{partsConfig[selectedPart]?.rotation}°</span>
+                  <span>{currentPartsConfig[selectedPart]?.rotation}°</span>
                 </div>
 
                 <div className={styles.formGroup}>
                   <label>Thứ tự lớp (zIndex):</label>
                   <input
                     type="number"
-                    value={partsConfig[selectedPart]?.zIndex || 0}
+                    value={currentPartsConfig[selectedPart]?.zIndex || 0}
                     onChange={(e) => handleParamChange('zIndex', e.target.value)}
                   />
                 </div>
@@ -577,7 +692,7 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
                 <div className={styles.formGroup}>
                   <label>Tâm xoay (Transform Origin):</label>
                   <select
-                    value={partsConfig[selectedPart]?.transformOrigin || 'center'}
+                    value={currentPartsConfig[selectedPart]?.transformOrigin || 'center'}
                     onChange={(e) => handleParamChange('transformOrigin', e.target.value)}
                   >
                     {DEFAULT_ORIGINS.map((orig) => (
@@ -589,29 +704,8 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
                 </div>
               </div>
             ) : (
-              <div className={styles.partsListPanel}>
-                <h4>📋 Danh sách các bộ phận Rigging</h4>
-                <p className={styles.listDesc}>
-                  {isLocked
-                    ? 'Đang khóa chỉnh sửa từng phần. Bạn có thể kéo toàn bộ khung canvas để dịch chuyển tổng thể.'
-                    : 'Click vào tên bộ phận dưới đây hoặc click trực tiếp vào ảnh trên khung canvas để chỉnh sửa thông số.'}
-                </p>
-
-                <div className={styles.partsList}>
-                  {Object.keys(partsConfig).map((key) => (
-                    <div
-                      key={key}
-                      className={`${styles.partItem} ${selectedPart === key ? styles.active : ''}`}
-                      onClick={() => !isLocked && setSelectedPart(key)}
-                    >
-                      <span className={styles.partDot} style={{ opacity: loadedImages[key] ? 1 : 0.4 }}>🟢</span>
-                      <span className={styles.partName}>{PART_LABELS[key] || key}</span>
-                      <span className={styles.partCoords}>
-                        (X: {Math.round(partsConfig[key].x)}, Y: {Math.round(partsConfig[key].y)})
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <div className={styles.inspectorHint}>
+                <p>👉 Click vào một bộ phận bất kỳ trên danh sách bên trên hoặc hình vẽ con pet để tinh chỉnh thông số chi tiết (tọa độ, scale, xoay, zIndex...).</p>
               </div>
             )}
           </div>
@@ -620,11 +714,9 @@ function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, onConfirm }) {
         {/* Footer */}
         <div className={styles.modalFooter}>
           <button type="button" onClick={onClose} className={styles.btnCancel}>Hủy bỏ</button>
-          <button type="button" onClick={handleSave} className={styles.btnSave}>💾 Lưu cấu hình Template</button>
+          <button type="button" onClick={handleSave} className={styles.btnSave}>💾 Hoàn tất Cấu hình Pet & Phòng</button>
         </div>
       </div>
     </div>
   );
 }
-
-export default PetRigEditorModal;
