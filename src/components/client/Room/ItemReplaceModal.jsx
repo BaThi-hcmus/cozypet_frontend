@@ -32,6 +32,7 @@ export default function ItemReplaceModal({
   items = [],
   userItems = [],
   currentDecorationItemId,
+  currentPlacedItem,
   onSelectItem,
 }) {
   if (!open || !slot) return null;
@@ -41,6 +42,8 @@ export default function ItemReplaceModal({
     items.forEach((item) => map.set(toId(item._id), item));
     return map;
   }, [items]);
+
+  const currentDecoId = toId(currentDecorationItemId);
 
   const filteredItems = useMemo(() => {
     const result = [];
@@ -55,6 +58,9 @@ export default function ItemReplaceModal({
       const item = itemById.get(itemId);
       if (!item) return;
       if (item.deleted || item.status === 'inactive') return;
+
+      // Không loại trừ item hiện tại để luôn có ít nhất item đang hiển thị hoặc các item khác trong kho cùng loại
+      // (Bỏ điều kiện currentDecoId === itemId để không bị trống modal)
 
       // Filter 1: slotType match or item.slotType === 'other'
       const slotMatch =
@@ -85,8 +91,6 @@ export default function ItemReplaceModal({
     return result;
   }, [userItems, itemById, slot, room]);
 
-  const currentDecoId = toId(currentDecorationItemId);
-
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div
@@ -111,6 +115,19 @@ export default function ItemReplaceModal({
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
+
+        {/* Trực quan hiển thị vật phẩm hiện tại đang được thay thế */}
+        {currentPlacedItem && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 28px', background: '#fef3c7', borderBottom: '1px solid #fde68a' }}>
+            <div style={{ width: '48px', height: '48px', background: '#fff', borderRadius: '10px', padding: '4px', border: '1px solid #f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src={currentPlacedItem.image} alt={currentPlacedItem.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#b45309' }}>Vật phẩm hiện tại đang trang bị:</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#78350f' }}>{currentPlacedItem.name}</div>
+            </div>
+          </div>
+        )}
 
         <div className={styles.filterInfoRow}>
           {slot.slotType && (
@@ -179,6 +196,9 @@ export default function ItemReplaceModal({
                         className={styles.itemImage}
                         draggable={false}
                       />
+                      <div className={styles.replaceHoverTag}>
+                        <span>Thay thế</span>
+                      </div>
                     </div>
                     <div className={styles.itemInfo}>
                       <h4 className={styles.itemName}>{item.name}</h4>

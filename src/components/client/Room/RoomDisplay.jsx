@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styles from './RoomDisplay.module.css';
 import { PetAvatarRig } from '../Pet/PetAvatarRig';
+import ItemReplaceModal from './ItemReplaceModal';
+import api from '../../../api/api';
+import { toast } from 'react-toastify';
 
 const STATUS_META = [
   { key: 'hunger', label: 'Đói', icon: 'restaurant', color: '#ff9a62' },
@@ -20,6 +23,13 @@ function slotStyle(slot, canvasSize) {
   };
 }
 
+function toId(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value._id) return String(value._id);
+  return String(value);
+}
+
 export default function RoomDisplay({
   canvasSize = 1000,
   profile,
@@ -28,12 +38,62 @@ export default function RoomDisplay({
   pet,
   petTemplate,
   inventoryCount = 0,
+  userInfo = null,
+  onRefresh = () => {},
 }) {
+  const [selectedSlotData, setSelectedSlotData] = useState(null);
+
   if (!room) return null;
 
   const petName = pet?.name || petTemplate?.name || 'Bạn nhỏ';
   const petStatus = pet?.status || {};
   const hasLayers = petTemplate?.layers && Object.keys(petTemplate.layers).length > 0;
+
+  const currentUserRoom = userInfo?.userRooms
+    ? userInfo.userRooms.find((ur) => toId(ur.roomId) === toId(room._id) || ur.isCurrent) || userInfo.userRooms[0]
+    : null;
+
+  const userItems = userInfo?.userItems || [];
+  const allItems = userInfo?.items || [];
+
+  const handleOpenReplaceModal = (slotKey, slot, item) => {
+    setSelectedSlotData({ slotKey, slot, item });
+  };
+
+  const handleCloseReplaceModal = () => {
+    setSelectedSlotData(null);
+  };
+
+  const handleSelectItem = async (newItem, newUserItem) => {
+    if (!currentUserRoom) {
+      toast.error('Không tìm thấy thông tin phòng của bạn');
+      return;
+    }
+
+    try {
+      const userRoomId = toId(currentUserRoom._id);
+      const slotKey = selectedSlotData.slotKey;
+      const insertItemId = toId(newUserItem._id); // Sử dụng userItem._id như backend yêu cầu/hỗ trợ hoặc itemId tùy theo schema decoration
+
+      // Backend route: POST /rooms/:userRoomId/replace-item
+      // Dựa trên controller backend: replaceItemDto { slotKey, insertItemId }
+      // Trong backend client.room.service.ts: [`decorations.${slotKey}`]: new Types.ObjectId(insertItemId)
+      // Thông thường decorations lưu userItem._id hoặc itemId. Kiểm tra xem userItem._id được dùng trong buildPlacedItems.
+      // buildPlacedItems hỗ trợ cả userItem._id và itemId trực tiếp. Ta truyền userItem._id hoặc newItem._id.
+      // Dựa trên code cũ ở admin/client: decorate thường lưu userItem._id.
+      await api.post(`/rooms/${userRoomId}/replace-item`, {
+        slotKey,
+        insertItemId: toId(newUserItem._id),
+      });
+
+      toast.success('Đổi vật phẩm thành công!');
+      handleCloseReplaceModal();
+      window.location.reload(); // Hoặc gọi callback refresh
+    } catch (err) {
+      console.error('Replace item error:', err);
+      toast.error(err.response?.data?.message || 'Không thể thay thế vật phẩm');
+    }
+  };
 
   return (
     <div className={styles.pageWrapper}>
@@ -113,8 +173,9 @@ export default function RoomDisplay({
               {placedItems.map(({ slotKey, slot, item }) => (
                 <div
                   key={slotKey}
-                  className={styles.itemSlot}
+                  className={`${styles.itemSlot} ${styles.interactiveSlot}`}
                   style={slotStyle(slot, canvasSize)}
+                  onClick={() => handleOpenReplaceModal(slotKey, slot, item)}
                 >
                   <img
                     src={item.image}
@@ -125,6 +186,10 @@ export default function RoomDisplay({
                   <div className={styles.itemTooltip}>
                     <span className={styles.itemName}>{item.name}</span>
                     <span className={styles.itemCategory}>{item.category}</span>
+                  </div>
+                  <div className={styles.replaceOverlay}>
+                    <span className="material-symbols-outlined">swap_horiz</span>
+                    <span>Đổi vật phẩm</span>
                   </div>
                 </div>
               ))}
@@ -158,10 +223,25 @@ export default function RoomDisplay({
           </div>
 
           <p className={styles.hint}>
-            Chạm vào bé để chơi · Đồ vật được đặt đúng vị trí và tỷ lệ trong phòng 1000×1000
+            Chạm vào bé để chơi · Click vào vật phẩm trong phòng để đổi vật phẩm khác
           </p>
         </section>
       </main>
+
+      {selectedSlotData && (
+        <ItemReplaceModal
+          open={!!selectedSlotData}
+          onClose={handleCloseReplaceModal}
+          slotKey={selectedSlotData.slotKey}
+          slot={selectedSlotData.slot}
+          room={room}
+          items={allItems}
+          userItems={userItems}
+          currentDecorationItemId={selectedSlotData.item._id}
+          currentPlacedItem={selectedSlotData.item}
+          onSelectItem={handleSelectItem}
+        />
+      )}
     </div>
   );
 }

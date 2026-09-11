@@ -239,6 +239,42 @@
   pointer-events: auto;
 }
 
+.interactiveSlot {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.interactiveSlot:hover {
+  transform: scale(1.03);
+}
+
+.interactiveSlot .replaceOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(106, 90, 205, 0.85);
+  color: #fff;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.interactiveSlot:hover .replaceOverlay {
+  opacity: 1;
+}
+
+.interactiveSlot .replaceOverlay span.material-symbols-outlined {
+  font-size: 22px;
+}
+
 .itemImage {
   width: 100%;
   height: 100%;
