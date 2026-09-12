@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styles from './RoomDisplay.module.css';
-import { PetAvatarRig } from '../Pet/PetAvatarRig';
+import { PetAvatarRigLayered } from '../Pet/PetAvatarRigLayered';
 import ItemReplaceModal from './ItemReplaceModal';
 import api from '../../../api/api';
 import useRoomStore from '../../../stores/useRoomStore';
@@ -48,7 +48,19 @@ export default function RoomDisplay({
 
   const petName = pet?.name || petTemplate?.name || 'Bạn nhỏ';
   const petStatus = pet?.status || {};
-  const hasLayers = petTemplate?.layers && Object.keys(petTemplate.layers).length > 0;
+
+  // Tìm roomCode hiện tại từ room.code để lấy đúng config layers theo phòng
+  const roomCodeMap = {
+    'LIVING_ROOM': 'livingRoom',
+    'BED_ROOM': 'bedRoom',
+    'KITCHEN': 'kitchen',
+  };
+  const roomConfigKey = roomCodeMap[room?.code] || 'livingRoom';
+  const roomConfig = petTemplate?.rooms?.[roomConfigKey];
+  const petLayers = roomConfig?.layers;
+  const petGlobalZoom = roomConfig?.globalZoom ?? 1;
+  const petGlobalOffset = roomConfig?.globalOffset ?? { x: 0, y: 0 };
+  const hasLayers = petLayers && Object.keys(petLayers).length > 0;
 
   const currentUserRoom = userInfo?.userRooms
     ? userInfo.userRooms.find((ur) => toId(ur.roomId) === toId(room._id) || ur.isCurrent) || userInfo.userRooms[0]
@@ -191,29 +203,28 @@ export default function RoomDisplay({
                 </div>
               ))}
 
-              {(hasLayers || petTemplate?.avatar) && (
+              {/* Pet parts — mỗi canvas riêng với z-index độc lập */}
+              {hasLayers && (
+                <PetAvatarRigLayered
+                  type={petTemplate.species}
+                  layers={petLayers}
+                  globalZoom={petGlobalZoom}
+                  globalOffset={petGlobalOffset}
+                />
+              )}
+
+              {/* Fallback avatar khi chưa có layers */}
+              {!hasLayers && petTemplate?.avatar && (
                 <div className={styles.petAnchor}>
                   <div className={styles.petNameTag}>
                     <span className="material-symbols-outlined">favorite</span>
                     {petName}
                   </div>
-                  {hasLayers ? (
-                    <PetAvatarRig
-                      type={petTemplate.species}
-                      layers={petTemplate.layers}
-                      globalZoom={petTemplate.globalZoom}
-                      globalOffset={petTemplate.globalOffset || { x: 0, y: 0 }}
-                      name={petName}
-                      compact
-                      showInfo={false}
-                    />
-                  ) : (
-                    <img
-                      src={petTemplate.avatar}
-                      alt={petName}
-                      className={styles.petFallback}
-                    />
-                  )}
+                  <img
+                    src={petTemplate.avatar}
+                    alt={petName}
+                    className={styles.petFallback}
+                  />
                 </div>
               )}
             </div>

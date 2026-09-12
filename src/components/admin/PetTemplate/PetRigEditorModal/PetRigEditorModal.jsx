@@ -324,43 +324,77 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.save();
-    ctx.translate(currentGlobal.offset.x, currentGlobal.offset.y);
-    ctx.scale(currentGlobal.zoom, currentGlobal.zoom);
-
-    const sortedParts = Object.keys(currentPartsConfig).sort(
-      (a, b) => (currentPartsConfig[a].zIndex || 0) - (currentPartsConfig[b].zIndex || 0)
-    );
-
-    sortedParts.forEach((key) => {
-      const img = loadedImagesRef.current[key] || loadedImages[key];
-      const config = currentPartsConfig[key];
-      if (!img || !config || !config.url) return;
-
+    // Canvas chỉ vẽ viền chọn (selection outline) — không vẽ ảnh pet
+    // Ảnh pet được render bằng DOM elements riêng với z-index độc lập
+    if (!isLocked) {
       ctx.save();
-      ctx.translate(config.x, config.y);
-      ctx.rotate((config.rotation * Math.PI) / 180);
+      ctx.translate(currentGlobal.offset.x, currentGlobal.offset.y);
+      ctx.scale(currentGlobal.zoom, currentGlobal.zoom);
 
-      const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
-      const w = clamped.w;
-      const h = clamped.h;
-      const { ox, oy } = calcOriginOffset(w, h, config.transformOrigin);
+      Object.keys(currentPartsConfig).forEach((key) => {
+        const img = loadedImagesRef.current[key] || loadedImages[key];
+        const config = currentPartsConfig[key];
+        if (!img || !config || !config.url) return;
 
-      ctx.drawImage(img, -ox, -oy, w * config.scale, h * config.scale);
+        ctx.save();
+        ctx.translate(config.x, config.y);
+        ctx.rotate((config.rotation * Math.PI) / 180);
 
-      if (!isLocked) {
-        ctx.strokeStyle = key === selectedPart ? '#2563eb' : '#cbd5e1';
+        const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
+        const w = clamped.w;
+        const h = clamped.h;
+        const { ox, oy } = calcOriginOffset(w, h, config.transformOrigin);
+
+        ctx.strokeStyle = key === selectedPart ? '#2563eb' : 'rgba(203,213,225,0.5)';
         ctx.lineWidth = key === selectedPart ? 3 : 1.5;
         ctx.strokeRect(-ox, -oy, w * config.scale, h * config.scale);
 
         ctx.fillStyle = key === selectedPart ? '#1d4ed8' : '#64748b';
         ctx.font = '14px sans-serif';
         ctx.fillText(PART_LABELS[key] || key, -ox, -oy - 8);
-      }
 
+        ctx.restore();
+      });
       ctx.restore();
-    });
-    ctx.restore();
+    }
+  };
+
+  // Tính style DOM cho từng bộ phận pet (render bằng <img> thay vì canvas)
+  const getPartDomStyle = (partKey) => {
+    const config = currentPartsConfig[partKey];
+    const img = loadedImagesRef.current[partKey] || loadedImages[partKey];
+    if (!config || !config.url || !img) return null;
+
+    const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
+    const w = clamped.w;
+    const h = clamped.h;
+    const { ox, oy } = calcOriginOffset(w, h, config.transformOrigin);
+    const containerW = 600; // roomCanvasContainer width
+    const pxPerUnit = containerW / 1000; // chuyển từ hệ 1000x1000 sang px
+
+    const globalX = currentGlobal.offset.x;
+    const globalY = currentGlobal.offset.y;
+    const zoom = currentGlobal.zoom;
+
+    const posX = (globalX + config.x) * pxPerUnit;
+    const posY = (globalY + config.y) * pxPerUnit;
+    const imgW = w * config.scale * zoom * pxPerUnit;
+    const imgH = h * config.scale * zoom * pxPerUnit;
+    const originX = ox * config.scale * zoom * pxPerUnit;
+    const originY = oy * config.scale * zoom * pxPerUnit;
+
+    return {
+      position: 'absolute',
+      left: `${posX - originX}px`,
+      top: `${posY - originY}px`,
+      width: `${imgW}px`,
+      height: `${imgH}px`,
+      transform: `rotate(${config.rotation || 0}deg)`,
+      transformOrigin: config.transformOrigin || 'center',
+      zIndex: config.zIndex ?? 0,
+      pointerEvents: 'none',
+      userSelect: 'none',
+    };
   };
 
   const handleUpdatePartImage = (partKey, file) => {
@@ -644,6 +678,7 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
                 {room && room.background_url && (
                   <img src={room.background_url} alt={room.name} className={styles.roomBgImage} draggable={false} />
                 )}
+                {/* Items và Pet parts được render cùng cấp DOM, z-index cạnh tranh tự do */}
                 {placedItems.map(({ slotKey, slot, item }) => {
                   const scaleFactor = slot.scaleFactor || 1;
                   return (
@@ -664,13 +699,29 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
                   );
                 })}
 
+                {/* Pet parts: mỗi bộ phận là 1 <img> DOM riêng với z-index độc lập */}
+                {Object.keys(currentPartsConfig).map((partKey) => {
+                  const domStyle = getPartDomStyle(partKey);
+                  if (!domStyle) return null;
+                  return (
+                    <img
+                      key={`pet-part-${partKey}`}
+                      src={currentPartsConfig[partKey].url}
+                      alt={partKey}
+                      draggable={false}
+                      style={domStyle}
+                    />
+                  );
+                })}
+
+                {/* Canvas trong suốt: chỉ vẽ viền chọn + bắt mouse events */}
                 <canvas
                   ref={canvasRef}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   className={styles.rigCanvasOverlay}
-                  style={{ zIndex: 100 }}
+                  style={{ zIndex: 9999, background: 'transparent' }}
                 />
               </div>
             </div>
