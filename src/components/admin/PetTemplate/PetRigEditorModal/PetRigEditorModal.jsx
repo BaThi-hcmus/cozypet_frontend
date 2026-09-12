@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styles from './PetRigEditorModal.module.css';
-import { clampPartSize, calcOriginOffset } from '../../../../utils/petAnimations';
+import { clampPartSize, calcOriginOffset, getPartAnimationOffsets, MAX_REACTION_DURATION } from '../../../../utils/petAnimations';
 import api from '../../../../api/api';
 import { toast } from 'react-toastify';
 import { useDropzone } from 'react-dropzone';
@@ -166,12 +166,43 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
   const loadedImagesRef = useRef({});
   const [selectedPart, setSelectedPart] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [animationState, setAnimationState] = useState('idle');
+  const [animStartTime, setAnimStartTime] = useState(0);
+  const [timeNow, setTimeNow] = useState(Date.now() / 1000);
 
-  const [isльноеDragging, setIsDragging] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const roomConfigsInitialStr = JSON.stringify(roomConfigsInitial || {});
   const imgSrcsStr = JSON.stringify(imgSrcs || {});
+
+  useEffect(() => {
+    let animationFrameId;
+    if (isPreviewMode) {
+      const animate = () => {
+        const currentNow = Date.now() / 1000;
+        setTimeNow(currentNow);
+
+        setAnimStartTime((prevTime) => {
+          if (prevTime > 0) {
+             const elapsed = currentNow - prevTime;
+             if (elapsed > MAX_REACTION_DURATION) {
+                setAnimationState('idle');
+                return 0;
+             }
+          }
+          return prevTime;
+        });
+
+        animationFrameId = requestAnimationFrame(animate);
+      };
+      animationFrameId = requestAnimationFrame(animate);
+    }
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
+  }, [isPreviewMode]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -310,10 +341,6 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
     };
   }, [activeRoomCode, urlsString]);
 
-  useEffect(() => {
-    drawCanvas();
-  }, [currentPartsConfig, selectedPart, isLocked, currentGlobal, roomDataMap, loadedImages]);
-
   const drawCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -326,7 +353,7 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
 
     // Canvas chỉ vẽ viền chọn (selection outline) — không vẽ ảnh pet
     // Ảnh pet được render bằng DOM elements riêng với z-index độc lập
-    if (!isLocked) {
+    if (!isLocked && !isPreviewMode) {
       ctx.save();
       ctx.translate(currentGlobal.offset.x, currentGlobal.offset.y);
       ctx.scale(currentGlobal.zoom, currentGlobal.zoom);
@@ -359,11 +386,35 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
     }
   };
 
+  useEffect(() => {
+    drawCanvas();
+  }, [currentPartsConfig, selectedPart, isLocked, isPreviewMode, currentGlobal, roomDataMap, loadedImages]);
+
   // Tính style DOM cho từng bộ phận pet (render bằng <img> thay vì canvas)
   const getPartDomStyle = (partKey) => {
     const config = currentPartsConfig[partKey];
-    const img = loadedImagesRef.current[partKey] || loadedImages[partKey];
+    const img = loadedImages[partKey];
     if (!config || !config.url || !img) return null;
+
+    let animRotation = 0;
+    let animTranslateY = 0;
+    let animScale = 1;
+
+    if (isPreviewMode) {
+      const baseKey = partKey.replace(/[0-9]/g, '');
+      let animStateName = 'idle';
+      let elapsed = 0;
+      
+      if (isPreviewMode && animationState !== 'idle') {
+          elapsed = timeNow - animStartTime;
+          animStateName = animationState === 'clicked' ? 'headClick' : (animationState === 'talking' ? 'bodyClick' : 'idle');
+      }
+
+      const animOffsets = getPartAnimationOffsets(baseKey, animStateName, timeNow, elapsed, 'cat');
+      animRotation = animOffsets.rotation;
+      animTranslateY = animOffsets.translateY;
+      animScale = animOffsets.scaleMultiplier;
+    }
 
     const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
     const w = clamped.w;
@@ -377,11 +428,11 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
     const zoom = currentGlobal.zoom;
 
     const posX = (globalX + config.x) * pxPerUnit;
-    const posY = (globalY + config.y) * pxPerUnit;
-    const imgW = w * config.scale * zoom * pxPerUnit;
-    const imgH = h * config.scale * zoom * pxPerUnit;
-    const originX = ox * config.scale * zoom * pxPerUnit;
-    const originY = oy * config.scale * zoom * pxPerUnit;
+    const posY = (globalY + config.y + animTranslateY) * pxPerUnit;
+    const imgW = w * config.scale * animScale * zoom * pxPerUnit;
+    const imgH = h * config.scale * animScale * zoom * pxPerUnit;
+    const originX = ox * config.scale * animScale * zoom * pxPerUnit;
+    const originY = oy * config.scale * animScale * zoom * pxPerUnit;
 
     return {
       position: 'absolute',
@@ -389,7 +440,7 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
       top: `${posY - originY}px`,
       width: `${imgW}px`,
       height: `${imgH}px`,
-      transform: `rotate(${config.rotation || 0}deg)`,
+      transform: `rotate(${(config.rotation || 0) + animRotation}deg)`,
       transformOrigin: config.transformOrigin || 'center',
       zIndex: config.zIndex ?? 0,
       pointerEvents: 'none',
@@ -482,6 +533,68 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
     const rawX = (e.clientX - rect.left) * scaleX;
     const rawY = (e.clientY - rect.top) * scaleY;
 
+    if (isPreviewMode) {
+      if (animationState !== 'idle') return;
+
+      const clickX = rawX;
+      const clickY = rawY;
+
+      const sortedKeys = Object.keys(currentPartsConfig).sort(
+        (a, b) => (currentPartsConfig[b].zIndex || 0) - (currentPartsConfig[a].zIndex || 0)
+      );
+
+      const hitCanvas = document.createElement('canvas');
+      hitCanvas.width = 1000;
+      hitCanvas.height = 1000;
+      const hitCtx = hitCanvas.getContext('2d', { willReadFrequently: true });
+
+      let clickedKey = null;
+      for (const key of sortedKeys) {
+        const conf = currentPartsConfig[key];
+        const img = loadedImages[key];
+        if (!img || !conf?.url) continue;
+
+        hitCtx.clearRect(0, 0, 1000, 1000);
+        hitCtx.save();
+        hitCtx.translate(currentGlobal.offset.x, currentGlobal.offset.y);
+        hitCtx.translate(conf.x, conf.y);
+        hitCtx.scale(currentGlobal.zoom, currentGlobal.zoom);
+
+        const baseKey = key.replace(/[0-9]/g, '');
+        const animOffsets = getPartAnimationOffsets(baseKey, 'idle', timeNow, 0, 'cat');
+        hitCtx.translate(0, animOffsets.translateY);
+        hitCtx.rotate(((conf.rotation || 0) + animOffsets.rotation) * Math.PI / 180);
+
+        const clamped = clampPartSize(img.naturalWidth, img.naturalHeight, 800);
+        const finalW = clamped.w * conf.scale * animOffsets.scaleMultiplier;
+        const finalH = clamped.h * conf.scale * animOffsets.scaleMultiplier;
+        const { ox, oy } = calcOriginOffset(clamped.w, clamped.h, conf.transformOrigin);
+
+        hitCtx.drawImage(img, -ox, -oy, finalW, finalH);
+        hitCtx.restore();
+
+        try {
+          const pixel = hitCtx.getImageData(clickX, clickY, 1, 1).data;
+          if (pixel[3] > 10) {
+            clickedKey = key;
+            break;
+          }
+        } catch {
+          // Bỏ qua lỗi CORS nếu có
+        }
+      }
+
+      if (clickedKey) {
+        if (clickedKey.startsWith('head')) {
+           setAnimationState('clicked');
+        } else {
+           setAnimationState('talking');
+        }
+        setAnimStartTime(Date.now() / 1000);
+      }
+      return;
+    }
+
     setIsDragging(true);
     setDragStart({ x: rawX, y: rawY });
 
@@ -520,7 +633,7 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
   };
 
   const handleMouseMove = (e) => {
-    if (!isльноеDragging) return;
+    if (isPreviewMode || !isDragging) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -563,7 +676,7 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
   const handleMouseUp = () => setIsDragging(false);
 
   const handleParamChange = (field, value) => {
-    if (!selectedPart) return;
+    if (isPreviewMode || !selectedPart) return;
     setRoomLayers((prev) => {
       const roomPart = prev[activeRoomCode];
       return {
@@ -655,21 +768,26 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
             <div className={styles.canvasToolbar}>
               <span>💡 Mẹo: Click vào part trên danh sách bên phải hoặc trực tiếp trên canvas để focus và chỉnh thông số.</span>
               <div className={styles.zoomControl}>
-                <label>Zoom:</label>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2"
-                  step="0.1"
-                  value={currentGlobal.zoom}
-                  onChange={(e) =>
-                    setRoomGlobalSettings((prev) => ({
-                      ...prev,
-                      [activeRoomCode]: { ...currentGlobal, zoom: parseFloat(e.target.value) },
-                    }))
-                  }
-                />
-                <span>{currentGlobal.zoom.toFixed(1)}x</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPreviewMode(!isPreviewMode);
+                    if (!isPreviewMode) {
+                       setSelectedPart(null);
+                    }
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    background: isPreviewMode ? '#10b981' : '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {isPreviewMode ? '⏹️ Dừng xem trước' : '▶️ Xem trước'}
+                </button>
               </div>
             </div>
 
