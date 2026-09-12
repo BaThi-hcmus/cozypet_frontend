@@ -389,7 +389,17 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
           isOpen={isRigEditorOpen}
           onClose={() => setIsRigEditorOpen(false)}
           imgSrcs={partPreviews}
-          roomConfigsInitial={initialData?.rooms}
+          roomConfigsInitial={(() => {
+            // ưu tiên riggingLayersConfig nếu đã edit lần nào, sau đó mới dùng initialData từ DB
+            if (riggingLayersConfig) return riggingLayersConfig;
+            if (!initialData?.rooms) return {};
+            // DB trả về camelCase, cần map sang UPPER_CASE cho PetRigEditorModal
+            return {
+              LIVING_ROOM: initialData.rooms.livingRoom,
+              BED_ROOM: initialData.rooms.bedRoom,
+              KITCHEN: initialData.rooms.kitchen,
+            };
+          })()}
           onConfirm={handleRigEditorConfirm}
         />
       </div>

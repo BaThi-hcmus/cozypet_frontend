@@ -177,10 +177,22 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
     if (!isOpen) return;
 
     if (roomConfigsInitial && Object.keys(roomConfigsInitial).length > 0) {
+      // Hàm merge đệ quy hoặc merge thủ công để không mất x, y, scale mặc định
+      const mergeLayers = (initialLayers, defaultLayers) => {
+        if (!initialLayers) return defaultLayers;
+        const merged = { ...defaultLayers };
+        Object.keys(initialLayers).forEach((partKey) => {
+          if (initialLayers[partKey]) {
+            merged[partKey] = { ...defaultLayers[partKey], ...initialLayers[partKey] };
+          }
+        });
+        return merged;
+      };
+
       const newLayersMap = {
-        LIVING_ROOM: roomConfigsInitial.LIVING_ROOM?.layers || roomLayers.LIVING_ROOM,
-        BED_ROOM: roomConfigsInitial.BED_ROOM?.layers || roomLayers.BED_ROOM,
-        KITCHEN: roomConfigsInitial.KITCHEN?.layers || roomLayers.KITCHEN,
+        LIVING_ROOM: mergeLayers(roomConfigsInitial.LIVING_ROOM?.layers, roomLayers.LIVING_ROOM),
+        BED_ROOM: mergeLayers(roomConfigsInitial.BED_ROOM?.layers, roomLayers.BED_ROOM),
+        KITCHEN: mergeLayers(roomConfigsInitial.KITCHEN?.layers, roomLayers.KITCHEN),
       };
       const newSettingsMap = {
         LIVING_ROOM: {
