@@ -38,9 +38,9 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
   const petPreviewData = {
     species: formData?.species || 'cat',
     name: formData.name || 'Pet mới',
-    layers: riggingLayersConfig || initialData?.layers || {},
-    globalZoom: globalZoom !== 1 ? globalZoom : (initialData?.globalZoom || 1),
-    globalOffset: (globalOffset.x !== 0 || globalOffset.y !== 0) ? globalOffset : (initialData?.globalOffset || { x: 0, y: 0 })
+    layers: riggingLayersConfig?.LIVING_ROOM?.layers || initialData?.rooms?.livingRoom?.layers || {},
+    globalZoom: riggingLayersConfig?.LIVING_ROOM?.globalZoom || initialData?.rooms?.livingRoom?.globalZoom || 1,
+    globalOffset: riggingLayersConfig?.LIVING_ROOM?.globalOffset || initialData?.rooms?.livingRoom?.globalOffset || { x: 0, y: 0 }
   };
 
   // Hook dropzone để bắt sự kiện chọn file từ máy hoặc kéo thả
@@ -70,19 +70,23 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
       });
       setPreviewUrl(initialData.avatar || '');
       setImageFile(null);
-      setRiggingLayersConfig(initialData?.layers || null);
-      setGlobalZoom(typeof initialData.globalZoom === 'number' ? initialData.globalZoom : 1);
-      setGlobalOffset(initialData.globalOffset && typeof initialData.globalOffset === 'object'
-        ? { x: Number(initialData.globalOffset.x) || 0, y: Number(initialData.globalOffset.y) || 0 }
-        : { x: 0, y: 0 });
-
-      // Nếu có sẵn layers từ DB, nạp preview url vào
-      if (initialData.layers) {
-        const initialPreviews = {};
-        Object.entries(initialData.layers).forEach(([key, val]) => {
-          if (val.url) initialPreviews[key] = val.url;
+      if (initialData?.rooms) {
+        setRiggingLayersConfig({
+          LIVING_ROOM: initialData.rooms.livingRoom,
+          BED_ROOM: initialData.rooms.bedRoom,
+          KITCHEN: initialData.rooms.kitchen,
         });
+        
+        // Nếu có sẵn layers từ DB, nạp preview url vào
+        const initialPreviews = {};
+        if (initialData.rooms.livingRoom?.layers) {
+          Object.entries(initialData.rooms.livingRoom.layers).forEach(([key, val]) => {
+            if (val.url) initialPreviews[key] = val.url;
+          });
+        }
         setPartPreviews(initialPreviews);
+      } else {
+        setRiggingLayersConfig(null);
       }
     } else {
       setFormData({
@@ -128,17 +132,21 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
   };
 
   // Sau khi Admin hoàn tất kéo thả và bấm lưu cấu hình trong RigEditorModal
-  const handleRigEditorConfirm = ({ layers, roomPartFiles, globalZoom: z, globalOffset: off }) => {
-    setRiggingLayersConfig(layers);
+  const handleRigEditorConfirm = ({ roomConfigs, roomPartFiles }) => {
+    setRiggingLayersConfig(roomConfigs);
+    
     if (roomPartFiles) {
       // Gộp các file bộ phận thay thế từ RigEditorModal vào partFiles tổng
       setPartFiles((prev) => {
         const merged = { ...prev };
+        const mapRoomKey = { LIVING_ROOM: 'livingRoom', BED_ROOM: 'bedRoom', KITCHEN: 'kitchen' };
+        
         Object.keys(roomPartFiles).forEach((code) => {
           if (roomPartFiles[code]) {
+            const mappedRoomCode = mapRoomKey[code] || code;
             Object.keys(roomPartFiles[code]).forEach((partKey) => {
               if (roomPartFiles[code][partKey]) {
-                merged[partKey] = roomPartFiles[code][partKey];
+                merged[`${mappedRoomCode}_${partKey}`] = roomPartFiles[code][partKey];
               }
             });
           }
@@ -146,8 +154,7 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
         return merged;
       });
     }
-    if (z !== undefined) setGlobalZoom(z);
-    if (off !== undefined) setGlobalOffset(off);
+
     toast.success('Đã lưu cấu hình Rigging tọa độ các bộ phận!');
   };
 
@@ -165,24 +172,32 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
       formPayload.append('templateId', formData.templateId.trim());
       formPayload.append('species', formData.species);
       formPayload.append('name', formData.name.trim());
-      // 2 trường hỗ trợ vẽ giao diện preview
-      formPayload.append('globalZoom', String(globalZoom));
-      formPayload.append('globalOffset', JSON.stringify(globalOffset));
 
       if (imageFile) {
         formPayload.append('avatar', imageFile);
       }
 
-      // Đính kèm các file bộ phận nếu có thay đổi mới
+      // Đính kèm các file bộ phận
       Object.keys(partFiles).forEach((key) => {
         if (partFiles[key]) {
-          formPayload.append(`${key}`, partFiles[key]);
+          if (!key.includes('_')) {
+             formPayload.append(`livingRoom_${key}`, partFiles[key]);
+             formPayload.append(`bedRoom_${key}`, partFiles[key]);
+             formPayload.append(`kitchen_${key}`, partFiles[key]);
+          } else {
+             formPayload.append(`${key}`, partFiles[key]);
+          }
         }
       });
 
-      // Đính kèm chuỗi JSON cấu hình tọa độ layers vào payload (luôn gửi nếu có)
+      // Đính kèm cấu hình phòng (rooms) chứa tọa độ, zoom, offset và zIndex từng bộ phận theo từng phòng
       if (riggingLayersConfig) {
-        formPayload.append('layers', JSON.stringify(riggingLayersConfig));
+        const formattedRooms = {
+          livingRoom: riggingLayersConfig.LIVING_ROOM,
+          bedRoom: riggingLayersConfig.BED_ROOM,
+          kitchen: riggingLayersConfig.KITCHEN,
+        };
+        formPayload.append('rooms', JSON.stringify(formattedRooms));
       }
 
       if (initialData) {
