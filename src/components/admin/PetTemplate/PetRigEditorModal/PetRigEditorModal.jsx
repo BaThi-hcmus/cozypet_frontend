@@ -37,17 +37,20 @@ function toId(value) {
 }
 
 function PartUploadRow({ partKey, previewUrl, isSelected, onSelectPart, onUpdatePart, onDeletePart }) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
   const dropzone = useDropzone({
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
     maxFiles: 1,
+    noClick: true,
+    noKeyboard: true,
     onDrop: (files) => {
       if (files && files.length > 0) {
         onUpdatePart(partKey, files[0]);
+        setDropdownOpen(false);
       }
     },
   });
-
-  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
     <div className={`${styles.partUploadRow} ${isSelected ? styles.activeRow : ''}`}>
@@ -79,8 +82,16 @@ function PartUploadRow({ partKey, previewUrl, isSelected, onSelectPart, onUpdate
       </div>
 
       {dropdownOpen && (
-        <div className={styles.partDropdownActions}>
-          <div {...dropzone.getRootProps()} className={styles.dropdownActionItem}>
+        <div className={styles.partDropdownActions} onClick={(e) => e.stopPropagation()}>
+          <div 
+            {...dropzone.getRootProps()} 
+            className={styles.dropdownActionItem}
+            onClick={(e) => {
+              // Kích hoạt click file input của dropzone khi bấm vào item thay thế
+              const inputEl = e.currentTarget.querySelector('input');
+              if (inputEl) inputEl.click();
+            }}
+          >
             <input {...dropzone.getInputProps()} />
             <span>🔄 Thay thế ảnh</span>
           </div>
@@ -105,12 +116,10 @@ function PartUploadRow({ partKey, previewUrl, isSelected, onSelectPart, onUpdate
 export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomConfigsInitial = {}, onConfirm }) {
   const canvasRef = useRef(null);
 
-  // Tab phòng hiện tại: LIVING_ROOM, BED_ROOM, KITCHEN
   const [activeRoomCode, setActiveRoomCode] = useState('LIVING_ROOM');
-  const [roomDataMap, setRoomDataMap] = useState({}); // { LIVING_ROOM: { room, items }, ... }
+  const [roomDataMap, setRoomDataMap] = useState({});
   const [loadingRoom, setLoadingRoom] = useState(false);
 
-  // Cấu hình layers cho từng phòng riêng biệt
   const [roomLayers, setRoomLayers] = useState({
     LIVING_ROOM: {
       body: { x: 350, y: 350, scale: 1, rotation: 0, zIndex: 2, transformOrigin: 'center', url: imgSrcs.body || '' },
@@ -141,14 +150,12 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
     },
   });
 
-  // Lưu trữ các file bộ phận mới upload theo phòng: { LIVING_ROOM: { head: File, ... }, ... }
   const [roomPartFiles, setRoomPartFiles] = useState({
     LIVING_ROOM: {},
     BED_ROOM: {},
     KITCHEN: {},
   });
 
-  // Zoom và offset tổng thể cho từng phòng
   const [roomGlobalSettings, setRoomGlobalSettings] = useState({
     LIVING_ROOM: { zoom: 1, offset: { x: 0, y: 0 } },
     BED_ROOM: { zoom: 1, offset: { x: 0, y: 0 } },
@@ -156,32 +163,39 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
   });
 
   const [loadedImages, setLoadedImages] = useState({});
+  const loadedImagesRef = useRef({});
   const [selectedPart, setSelectedPart] = useState(null);
-  const [isLocked, setIsLocked] = useState(false); // Khóa chỉnh từng part để kéo toàn con pet
+  const [isLocked, setIsLocked] = useState(false);
 
-  // Trạng thái kéo thả chuột trên Canvas
-  const [isDragging, setIsDragging] = useState(false);
+  const [isльноеDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // Khởi tạo dữ liệu từ props khi mở modal
+  const roomConfigsInitialStr = JSON.stringify(roomConfigsInitial || {});
+  const imgSrcsStr = JSON.stringify(imgSrcs || {});
+
   useEffect(() => {
     if (!isOpen) return;
 
     if (roomConfigsInitial && Object.keys(roomConfigsInitial).length > 0) {
-      const newLayersMap = { ...roomLayers };
-      const newSettingsMap = { ...roomGlobalSettings };
-
-      Object.entries(roomConfigsInitial).forEach(([code, cfg]) => {
-        if (cfg.layers) {
-          newLayersMap[code] = { ...cfg.layers };
-        }
-        if (cfg.globalZoom !== undefined || cfg.globalOffset !== undefined) {
-          newSettingsMap[code] = {
-            zoom: cfg.globalZoom ?? 1,
-            offset: cfg.globalOffset ?? { x: 0, y: 0 },
-          };
-        }
-      });
+      const newLayersMap = {
+        LIVING_ROOM: roomConfigsInitial.LIVING_ROOM?.layers || roomLayers.LIVING_ROOM,
+        BED_ROOM: roomConfigsInitial.BED_ROOM?.layers || roomLayers.BED_ROOM,
+        KITCHEN: roomConfigsInitial.KITCHEN?.layers || roomLayers.KITCHEN,
+      };
+      const newSettingsMap = {
+        LIVING_ROOM: {
+          zoom: roomConfigsInitial.LIVING_ROOM?.globalZoom ?? 1,
+          offset: roomConfigsInitial.LIVING_ROOM?.globalOffset ?? { x: 0, y: 0 },
+        },
+        BED_ROOM: {
+          zoom: roomConfigsInitial.BED_ROOM?.globalZoom ?? 1,
+          offset: roomConfigsInitial.BED_ROOM?.globalOffset ?? { x: 0, y: 0 },
+        },
+        KITCHEN: {
+          zoom: roomConfigsInitial.KITCHEN?.globalZoom ?? 1,
+          offset: roomConfigsInitial.KITCHEN?.globalOffset ?? { x: 0, y: 0 },
+        },
+      };
 
       setRoomLayers(newLayersMap);
       setRoomGlobalSettings(newSettingsMap);
@@ -200,9 +214,8 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
         return updated;
       });
     }
-  }, [isOpen, roomConfigsInitial, imgSrcs]);
+  }, [isOpen, roomConfigsInitialStr, imgSrcsStr]);
 
-  // Load thông tin phòng và item default qua API /admin/rooms/:roomCode
   useEffect(() => {
     if (!isOpen) return;
     if (roomDataMap[activeRoomCode]) return;
@@ -213,7 +226,7 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
         const res = await api.get(`/admin/rooms/${activeRoomCode}`);
         setRoomDataMap((prev) => ({
           ...prev,
-          [activeRoomCode]: res.data.data, // { room, items }
+          [activeRoomCode]: res.data.data,
         }));
       } catch (err) {
         console.error('Fetch room error:', err);
@@ -232,39 +245,62 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
   const room = currentRoomInfo?.room;
   const items = currentRoomInfo?.items || [];
 
-  // Load tất cả hình ảnh bộ phận của phòng hiện tại vào Image object
+  const urlsString = JSON.stringify(
+    ['LIVING_ROOM', 'BED_ROOM', 'KITCHEN'].map((code) => 
+      Object.keys(roomLayers[code] || {}).map((k) => roomLayers[code][k]?.url || '').join(',')
+    )
+  );
+
   useEffect(() => {
     if (!isOpen) return;
+    let isCancelled = false;
+    const parts = currentPartsConfig;
+    const keys = Object.keys(parts);
     const images = {};
     let loadedCount = 0;
-    const parts = currentPartsConfig;
-    const keys = Object.keys(parts).filter((k) => parts[k]?.url);
-
-    if (keys.length === 0) {
-      setLoadedImages({});
-      return;
-    }
 
     keys.forEach((key) => {
+      const url = parts[key]?.url;
+      if (!url) {
+        loadedCount++;
+        if (loadedCount === keys.length && !isCancelled) {
+          setLoadedImages({ ...images });
+        }
+        return;
+      }
+
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.src = parts[key].url;
+      img.src = url;
       img.onload = () => {
+        if (isCancelled) return;
         images[key] = img;
         loadedCount++;
-        if (loadedCount === keys.length) setLoadedImages({ ...images });
+        if (loadedCount === keys.length) {
+          const newLoaded = { ...images };
+          loadedImagesRef.current = newLoaded;
+          setLoadedImages(newLoaded);
+        }
       };
       img.onerror = () => {
+        if (isCancelled) return;
         loadedCount++;
-        if (loadedCount === keys.length) setLoadedImages({ ...images });
+        if (loadedCount === keys.length) {
+          const newLoaded = { ...images };
+          loadedImagesRef.current = newLoaded;
+          setLoadedImages(newLoaded);
+        }
       };
     });
-  }, [isOpen, activeRoomCode, roomLayers]);
 
-  // Vẽ Canvas mỗi khi thay đổi
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeRoomCode, urlsString]);
+
   useEffect(() => {
     drawCanvas();
-  }, [currentPartsConfig, loadedImages, selectedPart, isLocked, currentGlobal, roomDataMap]);
+  }, [currentPartsConfig, selectedPart, isLocked, currentGlobal, roomDataMap, loadedImages]);
 
   const drawCanvas = () => {
     const canvas = canvasRef.current;
@@ -285,9 +321,9 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
     );
 
     sortedParts.forEach((key) => {
-      const img = loadedImages[key];
+      const img = loadedImagesRef.current[key] || loadedImages[key];
       const config = currentPartsConfig[key];
-      if (!img || !config) return;
+      if (!img || !config || !config.url) return;
 
       ctx.save();
       ctx.translate(config.x, config.y);
@@ -315,53 +351,82 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
     ctx.restore();
   };
 
-  // Xử lý cập nhật / thay thế / xóa ảnh bộ phận
   const handleUpdatePartImage = (partKey, file) => {
     const previewUrl = URL.createObjectURL(file);
+    
     setRoomPartFiles((prev) => ({
       ...prev,
       [activeRoomCode]: {
-        ...prev[activeRoomCode],
+        ...(prev[activeRoomCode] || {}),
         [partKey]: file,
       },
     }));
 
     setRoomLayers((prev) => {
-      const roomPart = prev[activeRoomCode];
-      return {
-        ...prev,
-        [activeRoomCode]: {
-          ...roomPart,
+      const updated = { ...prev };
+      Object.keys(updated).forEach((code) => {
+        updated[code] = {
+          ...updated[code],
           [partKey]: {
-            ...roomPart[partKey],
+            ...(updated[code][partKey] || {}),
             url: previewUrl,
           },
-        },
-      };
+        };
+      });
+      return updated;
     });
-    setSelectedPart(partKey); // Focus ngay vào part vừa cập nhật
-    toast.success(`Đã cập nhật ảnh bộ phận [${PART_LABELS[partKey]}] cho phòng ${activeRoomCode}`);
+
+    // Tải trước ảnh mới và cập nhật loadedImages để canvas vẽ lại ngay lập tức
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = previewUrl;
+    img.onload = () => {
+      setLoadedImages((prev) => {
+        const next = { ...prev, [partKey]: img };
+        loadedImagesRef.current = next;
+        return next;
+      });
+      drawCanvas();
+    };
+
+    setSelectedPart(partKey);
+    toast.success(`Đã cập nhật ảnh bộ phận [${PART_LABELS[partKey]}]`);
   };
 
   const handleDeletePartImage = (partKey) => {
+    setRoomPartFiles((prev) => ({
+      ...prev,
+      [activeRoomCode]: {
+        ...(prev[activeRoomCode] || {}),
+        [partKey]: null,
+      },
+    }));
+
     setRoomLayers((prev) => {
-      const roomPart = prev[activeRoomCode];
-      return {
-        ...prev,
-        [activeRoomCode]: {
-          ...roomPart,
-          [partKey]: {
-            ...roomPart[partKey],
+      const updated = { ...prev };
+      Object.keys(updated).forEach((code) => {
+        if (updated[code][partKey]) {
+          updated[code][partKey] = {
+            ...updated[code][partKey],
             url: '',
-          },
-        },
-      };
+          };
+        }
+      });
+      return updated;
     });
+
+    setLoadedImages((prev) => {
+      const next = { ...prev };
+      delete next[partKey];
+      loadedImagesRef.current = next;
+      return next;
+    });
+
     if (selectedPart === partKey) setSelectedPart(null);
+    drawCanvas();
     toast.success(`Đã xóa ảnh bộ phận [${PART_LABELS[partKey]}]`);
   };
 
-  // Kéo thả chuột
   const handleMouseDown = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -409,7 +474,7 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
   };
 
   const handleMouseMove = (e) => {
-    if (!isDragging) return;
+    if (!isльноеDragging) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -529,7 +594,7 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
               className={`${styles.roomTabButton} ${activeRoomCode === tab.code ? styles.active : ''}`}
               onClick={() => {
                 setActiveRoomCode(tab.code);
-                setSelectedPart(null); // Reset focus khi đổi phòng
+                setSelectedPart(null);
               }}
             >
               {tab.label}

@@ -128,8 +128,24 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
   };
 
   // Sau khi Admin hoàn tất kéo thả và bấm lưu cấu hình trong RigEditorModal
-  const handleRigEditorConfirm = ({ layers, globalZoom: z, globalOffset: off }) => {
+  const handleRigEditorConfirm = ({ layers, roomPartFiles, globalZoom: z, globalOffset: off }) => {
     setRiggingLayersConfig(layers);
+    if (roomPartFiles) {
+      // Gộp các file bộ phận thay thế từ RigEditorModal vào partFiles tổng
+      setPartFiles((prev) => {
+        const merged = { ...prev };
+        Object.keys(roomPartFiles).forEach((code) => {
+          if (roomPartFiles[code]) {
+            Object.keys(roomPartFiles[code]).forEach((partKey) => {
+              if (roomPartFiles[code][partKey]) {
+                merged[partKey] = roomPartFiles[code][partKey];
+              }
+            });
+          }
+        });
+        return merged;
+      });
+    }
     if (z !== undefined) setGlobalZoom(z);
     if (off !== undefined) setGlobalOffset(off);
     toast.success('Đã lưu cấu hình Rigging tọa độ các bộ phận!');
@@ -358,6 +374,7 @@ function PetTemplateFormModal({ isOpen, onClose, initialData, onSuccess }) {
           isOpen={isRigEditorOpen}
           onClose={() => setIsRigEditorOpen(false)}
           imgSrcs={partPreviews}
+          roomConfigsInitial={initialData?.rooms}
           onConfirm={handleRigEditorConfirm}
         />
       </div>
