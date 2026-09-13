@@ -248,7 +248,8 @@
   transform: scale(1.03);
 }
 
-.interactiveSlot .replaceOverlay {
+.interactiveSlot .replaceOverlay,
+.interactiveSlot .toggleOverlay {
   position: absolute;
   inset: 0;
   background: rgba(106, 90, 205, 0.85);
@@ -262,17 +263,17 @@
   font-size: 11px;
   font-weight: bold;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.2s ease;
   z-index: 10;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.interactiveSlot:hover .replaceOverlay {
+/* Chỉ hiện overlay đổi vật phẩm/tắt bật đèn khi người dùng click trực tiếp vào item (thêm class active) */
+.interactiveSlot.activeSlot .replaceOverlay,
+.interactiveSlot.activeSlot .toggleOverlay {
   opacity: 1;
-}
-
-.interactiveSlot .replaceOverlay span.material-symbols-outlined {
-  font-size: 22px;
+  pointer-events: auto;
 }
 
 .itemImage {

@@ -43,6 +43,7 @@ export default function RoomDisplay({
   userInfo = null,
 }) {
   const [selectedSlotData, setSelectedSlotData] = useState(null);
+  const [isReplaceMode, setIsReplaceMode] = useState(false); // Trạng thái bật/tắt chế độ đổi vật phẩm
   const replaceItemInStore = useRoomStore((state) => state.replaceItemInStore);
   // ref lưu click handler của pet — được đăng ký bởi PetAvatarRigLayered
   const petClickHandlerRef = useRef(null);
@@ -172,6 +173,60 @@ export default function RoomDisplay({
               {placedItems.length} đang bày
             </div>
           </div>
+
+          <div style={{ marginTop: '20px' }}>
+            {!isReplaceMode ? (
+              <button
+                type="button"
+                onClick={() => setIsReplaceMode(true)}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #6a5acd, #8a2be2)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  fontSize: '0.95em',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(106, 90, 205, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'transform 0.2s ease',
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>swap_horiz</span>
+                Đổi vật phẩm
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsReplaceMode(false)}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  fontSize: '0.95em',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'transform 0.2s ease',
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
+                Hoàn tất
+              </button>
+            )}
+          </div>
         </aside>
 
         <section className={styles.sceneColumn}>
@@ -197,10 +252,11 @@ export default function RoomDisplay({
                 return (
                   <div
                     key={slotKey}
-                    className={`${styles.itemSlot} ${styles.interactiveSlot} ${isSpecialItem ? styles.specialSlot : ''}`}
+                    className={`${styles.itemSlot} ${isReplaceMode ? styles.interactiveSlot : ''} ${isSpecialItem ? styles.specialSlot : ''}`}
                     style={slotStyle(slot, canvasSize)}
                     onClick={(e) => {
-                      e.stopPropagation(); // không bubble lên roomScene (pet)
+                      if (!isReplaceMode) return; // Bình thường click vào item không có hiệu ứng gì
+                      e.stopPropagation();
                       const handled = handleItemInteraction(item);
                       if (!handled) {
                         handleOpenReplaceModal(slotKey, slot, item);
@@ -217,18 +273,20 @@ export default function RoomDisplay({
                       <span className={styles.itemName}>{item.name}</span>
                       <span className={styles.itemCategory}>{item.category}</span>
                     </div>
-                    {isSpecialItem ? (
-                      <div className={styles.toggleOverlay}>
-                        <span className="material-symbols-outlined">
-                          {isLightOn ? 'light_off' : 'light_mode'}
-                        </span>
-                        <span>{isLightOn ? 'Tắt đèn' : 'Bật đèn'}</span>
-                      </div>
-                    ) : (
-                      <div className={styles.replaceOverlay}>
-                        <span className="material-symbols-outlined">swap_horiz</span>
-                        <span>Đổi vật phẩm</span>
-                      </div>
+                    {isReplaceMode && (
+                      isSpecialItem ? (
+                        <div className={styles.toggleOverlay}>
+                          <span className="material-symbols-outlined">
+                            {isLightOn ? 'light_off' : 'light_mode'}
+                          </span>
+                          <span>{isLightOn ? 'Tắt đèn' : 'Bật đèn'}</span>
+                        </div>
+                      ) : (
+                        <div className={styles.replaceOverlay}>
+                          <span className="material-symbols-outlined">swap_horiz</span>
+                          <span>Đổi vật phẩm</span>
+                        </div>
+                      )
                     )}
                   </div>
                 );
