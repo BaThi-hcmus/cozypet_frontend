@@ -51,7 +51,7 @@ function buildPlacedItems(currentRoom, currentUserRoom, userItems, items) {
 }
 
 export default function Room() {
-  const { payload, loading, error, fetchRoomData } = useRoomStore();
+  const { payload, loading, error, fetchRoomData, switchRoom } = useRoomStore();
   const [showShopModal, setShowShopModal] = React.useState(false);
 
   useEffect(() => {
@@ -131,6 +131,23 @@ export default function Room() {
         inventoryCount={scene.inventoryCount}
         userInfo={payload}
       />
+
+      <div className={styles.roomSwitcher}>
+        <button
+          className={`${styles.roomBtn} ${scene.currentRoom?.code === 'LIVING_ROOM' ? styles.activeRoomBtn : ''}`}
+          onClick={() => switchRoom('LIVING_ROOM')}
+        >
+          <span className="material-symbols-outlined">weekend</span>
+          Phòng khách
+        </button>
+        <button
+          className={`${styles.roomBtn} ${scene.currentRoom?.code === 'BED_ROOM' ? styles.activeRoomBtn : ''}`}
+          onClick={() => switchRoom('BED_ROOM')}
+        >
+          <span className="material-symbols-outlined">bed</span>
+          Đi ngủ
+        </button>
+      </div>
 
       <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999 }}>
         <button

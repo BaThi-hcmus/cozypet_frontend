@@ -44,6 +44,69 @@ const useRoomStore = create((set, get) => ({
       },
     });
   },
+
+  // Chuyển đổi phòng
+  switchRoom: async (roomCode) => {
+    const currentPayload = get().payload;
+    if (!currentPayload) return;
+
+    const existingRoom = (currentPayload.rooms || []).find((r) => r.code === roomCode);
+
+    if (existingRoom) {
+      // Đã có room, chỉ cần cập nhật isCurrent
+      const updatedUserRooms = (currentPayload.userRooms || []).map((ur) => ({
+        ...ur,
+        isCurrent: String(ur.roomId) === String(existingRoom._id)
+      }));
+
+      set({
+        payload: {
+          ...currentPayload,
+          userRooms: updatedUserRooms,
+        },
+      });
+    } else {
+      // Chưa có room, gọi api để lấy và tạo
+      try {
+        set({ loading: true });
+        const res = await api.get(`/rooms/${roomCode}`);
+        const { room, userRoom, items, userItems } = res.data.data;
+
+        // Merge dữ liệu mới vào payload
+        const updatedRooms = [...(currentPayload.rooms || []), room];
+        
+        // Cập nhật isCurrent cho userRoom mới và set false cho các userRoom cũ
+        const updatedUserRooms = (currentPayload.userRooms || []).map((ur) => ({
+          ...ur,
+          isCurrent: false
+        }));
+        updatedUserRooms.push({ ...userRoom, isCurrent: true });
+
+        // Cập nhật items và userItems nếu có item mới
+        const currentItemIds = new Set((currentPayload.items || []).map(i => String(i._id)));
+        const newItemsToAdd = (items || []).filter(i => !currentItemIds.has(String(i._id)));
+        const updatedItems = [...(currentPayload.items || []), ...newItemsToAdd];
+
+        const currentUserItemIds = new Set((currentPayload.userItems || []).map(ui => String(ui._id)));
+        const newUserItemsToAdd = (userItems || []).filter(ui => !currentUserItemIds.has(String(ui._id)));
+        const updatedUserItems = [...(currentPayload.userItems || []), ...newUserItemsToAdd];
+
+        set({
+          loading: false,
+          payload: {
+            ...currentPayload,
+            rooms: updatedRooms,
+            userRooms: updatedUserRooms,
+            items: updatedItems,
+            userItems: updatedUserItems,
+          }
+        });
+      } catch (err) {
+        console.error('Lỗi khi chuyển phòng:', err);
+        set({ loading: false });
+      }
+    }
+  },
 }));
 
 export default useRoomStore;
