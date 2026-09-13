@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import styles from './RoomDisplay.module.css';
 import { PetAvatarRigLayered } from '../Pet/PetAvatarRigLayered';
 import ItemReplaceModal from './ItemReplaceModal';
 import api from '../../../api/api';
 import useRoomStore from '../../../stores/useRoomStore';
 import { toast } from 'react-toastify';
+import { useRoomInteraction } from '../../../hooks/useRoomInteraction';
 
 const STATUS_META = [
   { key: 'hunger', label: 'Đói', icon: 'restaurant', color: '#ff9a62' },
@@ -43,6 +44,18 @@ export default function RoomDisplay({
 }) {
   const [selectedSlotData, setSelectedSlotData] = useState(null);
   const replaceItemInStore = useRoomStore((state) => state.replaceItemInStore);
+  // ref lưu click handler của pet — được đăng ký bởi PetAvatarRigLayered
+  const petClickHandlerRef = useRef(null);
+  const handleRegisterPetClick = useCallback((fn) => { petClickHandlerRef.current = fn; }, []);
+
+  const currentUserRoom = userInfo?.userRooms
+    ? userInfo.userRooms.find((ur) => toId(ur.roomId) === toId(room?._id) || ur.isCurrent) || userInfo.userRooms[0]
+    : null;
+
+  const { isLightOn, handleItemInteraction, isNightlight } = useRoomInteraction({
+    room,
+    currentUserRoom,
+  });
 
   if (!room) return null;
 
@@ -61,10 +74,6 @@ export default function RoomDisplay({
   const petGlobalZoom = roomConfig?.globalZoom ?? 1;
   const petGlobalOffset = roomConfig?.globalOffset ?? { x: 0, y: 0 };
   const hasLayers = petLayers && Object.keys(petLayers).length > 0;
-
-  const currentUserRoom = userInfo?.userRooms
-    ? userInfo.userRooms.find((ur) => toId(ur.roomId) === toId(room._id) || ur.isCurrent) || userInfo.userRooms[0]
-    : null;
 
   const userItems = userInfo?.userItems || [];
   const allItems = userInfo?.items || [];
@@ -167,10 +176,14 @@ export default function RoomDisplay({
 
         <section className={styles.sceneColumn}>
           <div className={styles.sceneFrame}>
-            <div
+        <div
               className={styles.roomScene}
-              style={{
-                width: `min(${canvasSize}px, 100%)`,
+              style={{ width: `min(${canvasSize}px, 100%)` }}
+              onClick={(e) => {
+                // Click không bị stop propagation từ item → chạm vào pet
+                if (petClickHandlerRef.current) {
+                  petClickHandlerRef.current(e);
+                }
               }}
             >
               <img
@@ -179,29 +192,47 @@ export default function RoomDisplay({
                 className={styles.roomBackground}
               />
 
-              {placedItems.map(({ slotKey, slot, item }) => (
-                <div
-                  key={slotKey}
-                  className={`${styles.itemSlot} ${styles.interactiveSlot}`}
-                  style={slotStyle(slot, canvasSize)}
-                  onClick={() => handleOpenReplaceModal(slotKey, slot, item)}
-                >
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className={styles.itemImage}
-                    draggable={false}
-                  />
-                  <div className={styles.itemTooltip}>
-                    <span className={styles.itemName}>{item.name}</span>
-                    <span className={styles.itemCategory}>{item.category}</span>
+              {placedItems.map(({ slotKey, slot, item }) => {
+                const isSpecialItem = isNightlight(item);
+                return (
+                  <div
+                    key={slotKey}
+                    className={`${styles.itemSlot} ${styles.interactiveSlot} ${isSpecialItem ? styles.specialSlot : ''}`}
+                    style={slotStyle(slot, canvasSize)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // không bubble lên roomScene (pet)
+                      const handled = handleItemInteraction(item);
+                      if (!handled) {
+                        handleOpenReplaceModal(slotKey, slot, item);
+                      }
+                    }}
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className={`${styles.itemImage} ${isSpecialItem && isLightOn ? styles.nightlightGlow : ''}`}
+                      draggable={false}
+                    />
+                    <div className={styles.itemTooltip}>
+                      <span className={styles.itemName}>{item.name}</span>
+                      <span className={styles.itemCategory}>{item.category}</span>
+                    </div>
+                    {isSpecialItem ? (
+                      <div className={styles.toggleOverlay}>
+                        <span className="material-symbols-outlined">
+                          {isLightOn ? 'light_off' : 'light_mode'}
+                        </span>
+                        <span>{isLightOn ? 'Tắt đèn' : 'Bật đèn'}</span>
+                      </div>
+                    ) : (
+                      <div className={styles.replaceOverlay}>
+                        <span className="material-symbols-outlined">swap_horiz</span>
+                        <span>Đổi vật phẩm</span>
+                      </div>
+                    )}
                   </div>
-                  <div className={styles.replaceOverlay}>
-                    <span className="material-symbols-outlined">swap_horiz</span>
-                    <span>Đổi vật phẩm</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Pet parts — mỗi canvas riêng với z-index độc lập */}
               {hasLayers && (
@@ -210,6 +241,7 @@ export default function RoomDisplay({
                   layers={petLayers}
                   globalZoom={petGlobalZoom}
                   globalOffset={petGlobalOffset}
+                  onRegisterClickHandler={handleRegisterPetClick}
                 />
               )}
 
@@ -226,6 +258,12 @@ export default function RoomDisplay({
                     className={styles.petFallback}
                   />
                 </div>
+              )}
+              {/* Đèn ngủ tắt -> phòng sáng bình thường | Đèn ngủ bật -> phòng tối + ánh sáng nhẹ */}
+              {room?.code === 'BED_ROOM' && (
+                <div
+                  className={`${styles.darkOverlay} ${isLightOn ? styles.darkOverlayVisible : ''}`}
+                />
               )}
             </div>
           </div>

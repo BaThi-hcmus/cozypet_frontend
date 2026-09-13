@@ -115,6 +115,26 @@ const useRoomStore = create((set, get) => ({
       }
     }
   },
+
+  // Cập nhật trạng thái đèn trong Zustand sau khi toggle thành công
+  updateLightInStore: (userRoomId, isLightOn) => {
+    const currentPayload = get().payload;
+    if (!currentPayload) return;
+
+    const updatedUserRooms = (currentPayload.userRooms || []).map((ur) => {
+      if (String(ur._id) === String(userRoomId)) {
+        return { ...ur, isLightOn };
+      }
+      return ur;
+    });
+
+    set({
+      payload: {
+        ...currentPayload,
+        userRooms: updatedUserRooms,
+      },
+    });
+  },
 }));
 
 export default useRoomStore;

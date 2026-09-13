@@ -107,6 +107,7 @@ export const PetAvatarRigLayered = ({
   globalOffset = { x: 0, y: 0 },
   containerStyle = {},
   onPetClick,
+  onRegisterClickHandler, // callback để truyền handleClick lên parent
 }) => {
   const [animationState, setAnimationState] = useState('idle');
   const animStartTimeRef = useRef(0);
@@ -191,6 +192,13 @@ export const PetAvatarRigLayered = ({
     setTimeout(() => setAnimationState('idle'), MAX_REACTION_DURATION * 1000);
   }, [animationState, layers, loadedImages, globalOffset, globalZoom, type, onPetClick]);
 
+  // Đăng ký click handler lên parent để parent gọi khi cần
+  useEffect(() => {
+    if (onRegisterClickHandler) {
+      onRegisterClickHandler(handleOverlayClick);
+    }
+  }, [onRegisterClickHandler, handleOverlayClick]);
+
   if (!layers) return null;
 
   const partKeys = Object.keys(layers).filter(k => layers[k]?.url);
@@ -219,15 +227,17 @@ export const PetAvatarRigLayered = ({
         />
       ))}
 
-      {/* Overlay trong suốt để bắt click, nằm trên cùng */}
+      {/* Overlay trong suốt để bắt click vào pet.
+          pointer-events: none → click xuyên qua nếu không trúng pet.
+          Chúng ta xử lý click ở roomScene bên ngoài thông qua prop onRoomClick. */}
       <div
         style={{
           ...baseContainerStyle,
           zIndex: 9999,
           cursor: 'pointer',
           background: 'transparent',
+          pointerEvents: 'none',
         }}
-        onClick={handleOverlayClick}
       />
     </>
   );
