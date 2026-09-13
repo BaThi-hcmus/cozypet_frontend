@@ -147,6 +147,13 @@ export default function Room() {
           <span className="material-symbols-outlined">bed</span>
           Đi ngủ
         </button>
+        <button
+          className={`${styles.roomBtn} ${scene.currentRoom?.code === 'KITCHEN' ? styles.activeRoomBtn : ''}`}
+          onClick={() => switchRoom('KITCHEN')}
+        >
+          <span className="material-symbols-outlined">restaurant</span>
+          Ăn uống
+        </button>
       </div>
 
       <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999 }}>
