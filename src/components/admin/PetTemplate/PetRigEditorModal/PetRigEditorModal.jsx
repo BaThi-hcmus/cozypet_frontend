@@ -420,26 +420,23 @@ export default function PetRigEditorModal({ isOpen, onClose, imgSrcs = {}, roomC
     const w = clamped.w;
     const h = clamped.h;
     const { ox, oy } = calcOriginOffset(w, h, config.transformOrigin);
-    const containerW = 600; // roomCanvasContainer width
-    const pxPerUnit = containerW / 1000; // chuyển từ hệ 1000x1000 sang px
-
     const globalX = currentGlobal.offset.x;
     const globalY = currentGlobal.offset.y;
     const zoom = currentGlobal.zoom;
 
-    const posX = (globalX + config.x) * pxPerUnit;
-    const posY = (globalY + config.y + animTranslateY) * pxPerUnit;
-    const imgW = w * config.scale * animScale * zoom * pxPerUnit;
-    const imgH = h * config.scale * animScale * zoom * pxPerUnit;
-    const originX = ox * config.scale * animScale * zoom * pxPerUnit;
-    const originY = oy * config.scale * animScale * zoom * pxPerUnit;
+    const posX = globalX + config.x;
+    const posY = globalY + config.y + animTranslateY;
+    const imgW = w * config.scale * animScale * zoom;
+    const imgH = h * config.scale * animScale * zoom;
+    const originX = ox * config.scale * animScale * zoom;
+    const originY = oy * config.scale * animScale * zoom;
 
     return {
       position: 'absolute',
-      left: `${posX - originX}px`,
-      top: `${posY - originY}px`,
-      width: `${imgW}px`,
-      height: `${imgH}px`,
+      left: `${((posX - originX) / 1000) * 100}%`,
+      top: `${((posY - originY) / 1000) * 100}%`,
+      width: `${(imgW / 1000) * 100}%`,
+      height: `${(imgH / 1000) * 100}%`,
       transform: `rotate(${(config.rotation || 0) + animRotation}deg)`,
       transformOrigin: config.transformOrigin || 'center',
       zIndex: config.zIndex ?? 0,
