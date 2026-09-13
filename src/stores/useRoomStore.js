@@ -59,6 +59,14 @@ const useRoomStore = create((set, get) => ({
         isCurrent: String(ur.roomId) === String(existingRoom._id)
       }));
 
+      // Gọi API cập nhật DB
+      const targetUserRoom = (currentPayload.userRooms || []).find((ur) => String(ur.roomId) === String(existingRoom._id));
+      if (targetUserRoom) {
+        api.post(`/rooms/${targetUserRoom._id}/change-is-current-room`).catch(err => {
+          console.error('Lỗi khi lưu trạng thái phòng hiện tại:', err);
+        });
+      }
+
       set({
         payload: {
           ...currentPayload,
