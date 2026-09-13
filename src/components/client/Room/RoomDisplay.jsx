@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import styles from './RoomDisplay.module.css';
 import { PetAvatarRigLayered } from '../Pet/PetAvatarRigLayered';
 import ItemReplaceModal from './ItemReplaceModal';
@@ -49,6 +49,68 @@ export default function RoomDisplay({
   const petClickHandlerRef = useRef(null);
   const handleRegisterPetClick = useCallback((fn) => { petClickHandlerRef.current = fn; }, []);
 
+  // ── Pixel-perfect hit detection cho items ─────────────────────────────────
+  const [hoveredSlotKey, setHoveredSlotKey] = useState(null);
+  // { [slotKey]: CanvasRenderingContext2D | null | 'loading' }
+  const imageCanvasCache = useRef({});
+  const loadedImagesRef = useRef({});
+  const placedItemsRef = useRef(placedItems);
+
+  // Preload ảnh vào offscreen canvas cache (vẽ 1 lần, đọc nhiều lần)
+  useEffect(() => {
+    placedItemsRef.current = placedItems;
+    placedItems.forEach(({ slotKey, item }) => {
+      if (slotKey in imageCanvasCache.current) return; // đã có hoặc đang load
+      imageCanvasCache.current[slotKey] = 'loading';
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = item.image;
+      img.onload = () => {
+        loadedImagesRef.current[slotKey] = img;
+        try {
+          const offscreen = document.createElement('canvas');
+          offscreen.width = img.naturalWidth;
+          offscreen.height = img.naturalHeight;
+          const ctx = offscreen.getContext('2d', { willReadFrequently: true });
+          ctx.drawImage(img, 0, 0);
+          imageCanvasCache.current[slotKey] = ctx;
+        } catch (_) {
+          imageCanvasCache.current[slotKey] = null; // CORS fallback
+        }
+      };
+      img.onerror = () => { imageCanvasCache.current[slotKey] = null; };
+    });
+  }, [placedItems]);
+
+  /**
+   * Kiểm tra pixel-perfect: (sceneX, sceneY) trong không gian 0–1000.
+   * Trả về item đầu tiên (zIndex cao nhất) có alpha > 10 tại vị trí đó.
+   */
+  const hitTestItems = useCallback((sceneX, sceneY) => {
+    const items = placedItemsRef.current;
+    const sorted = [...items].sort((a, b) => (b.slot.zIndex || 1) - (a.slot.zIndex || 1));
+    for (const { slotKey, slot, item } of sorted) {
+      const sf = slot.scaleFactor || 1;
+      const iX = slot.x, iY = slot.y;
+      const iW = sf * 1000, iH = sf * 1000;
+      if (sceneX < iX || sceneX > iX + iW || sceneY < iY || sceneY > iY + iH) continue;
+      const ctx = imageCanvasCache.current[slotKey];
+      if (ctx === 'loading' || ctx === undefined) continue; // chưa load
+      if (ctx === null) return { slotKey, slot, item }; // CORS fallback
+      const img = loadedImagesRef.current[slotKey];
+      if (!img) continue;
+      const px = Math.floor(((sceneX - iX) / iW) * img.naturalWidth);
+      const py = Math.floor(((sceneY - iY) / iH) * img.naturalHeight);
+      try {
+        const alpha = ctx.getImageData(px, py, 1, 1).data[3];
+        if (alpha > 10) return { slotKey, slot, item };
+      } catch (_) {
+        return { slotKey, slot, item };
+      }
+    }
+    return null;
+  }, []);
+
   const currentUserRoom = userInfo?.userRooms
     ? userInfo.userRooms.find((ur) => toId(ur.roomId) === toId(room?._id) || ur.isCurrent) || userInfo.userRooms[0]
     : null;
@@ -57,6 +119,32 @@ export default function RoomDisplay({
     room,
     currentUserRoom,
   });
+
+  const handleSceneMouseMove = useCallback((e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const sceneX = ((e.clientX - rect.left) / rect.width) * 1000;
+    const sceneY = ((e.clientY - rect.top) / rect.height) * 1000;
+    const hit = hitTestItems(sceneX, sceneY);
+    setHoveredSlotKey(hit ? hit.slotKey : null);
+  }, [hitTestItems]);
+
+  const handleSceneMouseLeave = useCallback(() => { setHoveredSlotKey(null); }, []);
+
+  const handleSceneClick = useCallback((e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const sceneX = ((e.clientX - rect.left) / rect.width) * 1000;
+    const sceneY = ((e.clientY - rect.top) / rect.height) * 1000;
+    const hit = hitTestItems(sceneX, sceneY);
+    if (hit) {
+      const { slotKey, slot, item } = hit;
+      const handled = handleItemInteraction(item);
+      if (!handled && isReplaceMode) {
+        setSelectedSlotData({ slotKey, slot, item });
+      }
+    } else {
+      if (petClickHandlerRef.current) petClickHandlerRef.current(e);
+    }
+  }, [hitTestItems, handleItemInteraction, isReplaceMode]);
 
   if (!room) return null;
 
@@ -233,13 +321,13 @@ export default function RoomDisplay({
           <div className={styles.sceneFrame}>
         <div
               className={styles.roomScene}
-              style={{ width: `min(${canvasSize}px, 100%)` }}
-              onClick={(e) => {
-                // Click không bị stop propagation từ item → chạm vào pet
-                if (petClickHandlerRef.current) {
-                  petClickHandlerRef.current(e);
-                }
+              style={{
+                width: `min(${canvasSize}px, 100%)`,
+                cursor: hoveredSlotKey ? 'pointer' : 'default',
               }}
+              onMouseMove={handleSceneMouseMove}
+              onMouseLeave={handleSceneMouseLeave}
+              onClick={handleSceneClick}
             >
               <img
                 src={room.background_url}
@@ -249,18 +337,16 @@ export default function RoomDisplay({
 
               {placedItems.map(({ slotKey, slot, item }) => {
                 const isSpecialItem = isNightlight(item);
+                const isHovered = hoveredSlotKey === slotKey;
                 return (
                   <div
                     key={slotKey}
-                    className={`${styles.itemSlot} ${isReplaceMode ? styles.interactiveSlot : ''} ${isSpecialItem ? styles.specialSlot : ''}`}
-                    style={slotStyle(slot, canvasSize)}
-                    onClick={(e) => {
-                      if (!isReplaceMode) return; // Bình thường click vào item không có hiệu ứng gì
-                      e.stopPropagation();
-                      const handled = handleItemInteraction(item);
-                      if (!handled) {
-                        handleOpenReplaceModal(slotKey, slot, item);
-                      }
+                    className={`${styles.itemSlot} ${isSpecialItem ? styles.specialSlot : ''}`}
+                    style={{
+                      ...slotStyle(slot, canvasSize),
+                      pointerEvents: 'none',
+                      transform: isHovered ? 'scale(1.03)' : 'scale(1)',
+                      transition: 'transform 0.2s ease',
                     }}
                   >
                     <img
@@ -269,24 +355,27 @@ export default function RoomDisplay({
                       className={`${styles.itemImage} ${isSpecialItem && isLightOn ? styles.nightlightGlow : ''}`}
                       draggable={false}
                     />
-                    <div className={styles.itemTooltip}>
-                      <span className={styles.itemName}>{item.name}</span>
-                      <span className={styles.itemCategory}>{item.category}</span>
-                    </div>
-                    {isReplaceMode && (
-                      isSpecialItem ? (
-                        <div className={styles.toggleOverlay}>
-                          <span className="material-symbols-outlined">
-                            {isLightOn ? 'light_off' : 'light_mode'}
-                          </span>
-                          <span>{isLightOn ? 'Tắt đèn' : 'Bật đèn'}</span>
-                        </div>
-                      ) : (
-                        <div className={styles.replaceOverlay}>
-                          <span className="material-symbols-outlined">swap_horiz</span>
-                          <span>Đổi vật phẩm</span>
-                        </div>
-                      )
+                    {/* Tooltip: hiện khi hover pixel thật sự */}
+                    {isHovered && (
+                      <div className={`${styles.itemTooltip} ${styles.itemTooltipVisible}`}>
+                        <span className={styles.itemName}>{item.name}</span>
+                        <span className={styles.itemCategory}>{item.category}</span>
+                      </div>
+                    )}
+                    {/* Overlay: đèn ngủ luôn hiện khi hover; item thường chỉ hiện trong replace mode */}
+                    {isHovered && isSpecialItem && (
+                      <div className={styles.toggleOverlay} style={{ opacity: 1 }}>
+                        <span className="material-symbols-outlined">
+                          {isLightOn ? 'light_off' : 'light_mode'}
+                        </span>
+                        <span>{isLightOn ? 'Tắt đèn' : 'Bật đèn'}</span>
+                      </div>
+                    )}
+                    {isHovered && !isSpecialItem && isReplaceMode && (
+                      <div className={styles.replaceOverlay} style={{ opacity: 1 }}>
+                        <span className="material-symbols-outlined">swap_horiz</span>
+                        <span>Đổi vật phẩm</span>
+                      </div>
                     )}
                   </div>
                 );

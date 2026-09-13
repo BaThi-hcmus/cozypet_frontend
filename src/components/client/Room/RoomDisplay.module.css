@@ -306,6 +306,12 @@
   visibility: visible;
 }
 
+/* Dùng khi pointer-events: none — tooltip được bật qua state thay vì CSS :hover */
+.itemTooltipVisible {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
 .itemName {
   display: block;
   font-size: 12px;
